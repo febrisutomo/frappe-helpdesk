@@ -1,6 +1,7 @@
 # Copyright (c) 2023, Frappe Technologies and Contributors
 # See license.txt
 
+import json
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -11,6 +12,7 @@ from frappe.utils import add_to_date, get_datetime, getdate, now_datetime
 from helpdesk.api.ticket import bulk_reply
 from helpdesk.consts import DEFAULT_SLA
 from helpdesk.helpdesk.doctype.hd_ticket.api import (
+    get_one,
     merge_ticket,
     show_outside_hours_banner,
     split_ticket,
@@ -20,6 +22,7 @@ from helpdesk.helpdesk.doctype.hd_ticket.hd_ticket import (
     has_permission,
     permission_query,
 )
+from helpdesk.utils import INTERNAL_TICKET_FIELDS
 from helpdesk.test_utils import (
     SLA_PRIORITY_NAME,
     add_comment,
@@ -2332,6 +2335,44 @@ class TestHDTicket(FrappeTestCase):
         self.assertTrue(has_permission(ticket, user=agent2))
         self.assertFalse(has_permission(ticket, user=agent))
         self.assertNotIn("Team B", permission_query(agent))
+
+    def test_get_one_hides_internal_data_from_non_agents(self):
+        # dimensy: customer tidak boleh menerima prioritas, team, SLA, dan identitas agen
+        make_team("Team A", members=[agent])
+        ticket = make_ticket(raised_by=non_agent, priority="High", agent_group="Team A")
+        frappe.get_doc(
+            {
+                "doctype": "Communication",
+                "communication_type": "Communication",
+                "communication_medium": "Email",
+                "sent_or_received": "Sent",
+                "sender": agent,
+                "user": agent,
+                "bcc": "internal@example.com",
+                "subject": "Re: Test Ticket",
+                "content": "balasan agen",
+                "reference_doctype": "HD Ticket",
+                "reference_name": ticket.name,
+            }
+        ).insert(ignore_permissions=True)
+
+        frappe.set_user(agent)
+        as_agent = get_one(ticket.name)
+        self.assertEqual(as_agent["priority"], "High")
+        self.assertEqual(as_agent["agent_group"], "Team A")
+        self.assertEqual(as_agent["communications"][-1]["sender"], agent)
+
+        frappe.set_user("Administrator")
+        frappe.get_doc("User", non_agent).add_roles("HD Customer")
+        frappe.set_user(non_agent)
+        as_customer = get_one(ticket.name, is_customer_portal=False)  # klien tak bisa memilih
+        for fieldname in INTERNAL_TICKET_FIELDS:
+            self.assertNotIn(fieldname, as_customer)
+        sent = as_customer["communications"][-1]
+        self.assertEqual(sent["sender"], "Support Team")
+        self.assertEqual(sent["user"]["name"], "Support Team")
+        self.assertIsNone(sent["bcc"])
+        self.assertNotIn(f'"{agent}"', json.dumps(as_customer, default=str))  # tanda kutip: "non_agent@..." memuat "agent@..."
 
     def tearDown(self):
         frappe.set_user("Administrator")

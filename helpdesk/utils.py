@@ -59,6 +59,38 @@ def is_agent(user: str | None = None) -> bool:
     )
 
 
+# Dimensy: data internal tiket yang tidak boleh sampai ke non-agen (customer di portal).
+INTERNAL_TICKET_FIELDS = (
+    "priority",
+    "agent_group",
+    "sla",
+    "agreement_status",
+    "response_by",
+    "resolution_by",
+    "service_level_agreement_creation",
+    "on_hold_since",
+    "total_hold_time",
+    "first_response_time",
+    "first_responded_on",
+    "avg_response_time",
+    "resolution_date",
+    "resolution_time",
+    "user_resolution_time",
+    "first_response_failed_by",
+    "resolution_failed_by",
+    "last_agent_response",
+    "_assign",
+    "_seen",
+    "_liked_by",
+    "_comments",  # salinan balasan, memuat email agen
+)
+
+
+def get_customer_agent_label() -> str:
+    """Nama pengirim yang ditampilkan ke customer untuk balasan agen (site config `helpdesk_customer_agent_name`)."""
+    return frappe.conf.get("helpdesk_customer_agent_name") or "Support Team"
+
+
 def get_agent_name(user: str = None) -> str | None:
     """
     Get the HD Agent name for `user`

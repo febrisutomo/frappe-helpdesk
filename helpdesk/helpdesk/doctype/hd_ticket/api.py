@@ -16,8 +16,10 @@ from helpdesk.helpdesk.doctype.hd_settings.helpers import get_rendered_banner_ms
 from helpdesk.helpdesk.doctype.hd_ticket_template.api import get_fields_meta
 from helpdesk.helpdesk.doctype.hd_ticket_template.api import get_one as get_template
 from helpdesk.utils import (
+    INTERNAL_TICKET_FIELDS,
     agent_only,
     check_permissions,
+    get_customer_agent_label,
     get_customers,
     is_agent,
     parse_call_logs,
@@ -57,6 +59,10 @@ def get_one(name: str, is_customer_portal: bool = False):
     if not len(ticket):
         frappe.throw(_("Ticket not found"), frappe.DoesNotExistError)
     ticket = ticket.pop()
+
+    if not _is_agent:  # dimensy: customer tidak boleh menerima data internal
+        for fieldname in INTERNAL_TICKET_FIELDS:
+            ticket.pop(fieldname, None)
 
     contact = (
         frappe.qb.from_(QBContact)
@@ -191,8 +197,16 @@ def get_communications(ticket: str):
         .orderby(QBCommunication.creation, order=Order.asc)
         .run(as_dict=True)
     )
+    _is_agent = is_agent()
     for c in communications:
         c.attachments = get_attachments("Communication", c.name)
+        if not _is_agent and c.sent_or_received == "Sent":
+            # dimensy: customer hanya melihat nama tim, bukan nama/email agen
+            label = get_customer_agent_label()
+            c.sender = label
+            c.bcc = None
+            c.user = {"name": label, "email": "", "image": None}
+            continue
         user_id = c.user if c.sent_or_received == "Sent" and c.user else c.sender
         c.user = get_user_info_for_avatar(user_id)
     return communications
