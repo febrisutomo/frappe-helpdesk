@@ -8,10 +8,12 @@ from pypika import Criterion
 
 from helpdesk.api.dashboard import COUNT_NAME
 from helpdesk.utils import (
+    INTERNAL_TICKET_FIELDS,
     call_log_default_columns,
     check_permissions,
     contact_default_columns,
     contact_default_rows,
+    is_agent,
     parse_call_logs,
 )
 
@@ -33,6 +35,11 @@ def get_list_data(
     is_default: bool = False,
 ) -> dict:
     is_custom = False
+
+    # dimensy: non-agen selalu mendapat tampilan portal tanpa kolom internal, apa pun yang diminta klien
+    hide_internal = doctype == "HD Ticket" and not is_agent()
+    if hide_internal:
+        show_customer_portal_fields = True
 
     rows = frappe.parse_json(rows or "[]")
     columns = frappe.parse_json(columns or "[]")
@@ -118,6 +125,9 @@ def get_list_data(
         # the SLA columns can't tell fulfilled from due without these, and no saved view lists them
         for field in SLA_ROW_FIELDS:
             rows.append(field) if field not in rows else rows
+    if hide_internal:  # dimensy: termasuk kolom/baris yang diminta klien sendiri
+        rows = [r for r in rows if r not in INTERNAL_TICKET_FIELDS]
+        columns = [c for c in columns if c.get("key") not in INTERNAL_TICKET_FIELDS]
     data = (
         frappe.get_list(
             doctype,
@@ -229,6 +239,9 @@ def get_list_data(
                     "options": options,
                 }
 
+    if hide_internal:  # dimensy: std_fields di atas menambahkan _assign ke rows
+        rows = [r for r in rows if r not in INTERNAL_TICKET_FIELDS]
+
     return {
         "data": data,
         "columns": columns,
@@ -275,10 +288,7 @@ def get_filterable_fields(
         "name",
         "subject",
         "status",
-        "priority",
-        "response_by",
-        "resolution_by",
-        "creation",
+        "creation",  # dimensy: prioritas dan batas SLA tidak ditampilkan ke customer
         "customer",
     ]
 
@@ -394,6 +404,8 @@ def get_filterable_fields(
 
 @frappe.whitelist()
 def sort_options(doctype: str, show_customer_portal_fields: bool = False):
+    if doctype == "HD Ticket" and not is_agent():  # dimensy
+        show_customer_portal_fields = True
     fields = frappe.get_meta(doctype).fields
     fields = [field for field in fields if field.fieldtype not in no_value_fields]
     fields = [
@@ -423,6 +435,8 @@ def sort_options(doctype: str, show_customer_portal_fields: bool = False):
 
 @frappe.whitelist()
 def get_quick_filters(doctype: str, show_customer_portal_fields: bool = False):
+    if doctype == "HD Ticket" and not is_agent():  # dimensy
+        show_customer_portal_fields = True
     meta = frappe.get_meta(doctype)
     fields = [field for field in meta.fields if field.in_standard_filter]
     quick_filters = []
@@ -473,10 +487,7 @@ def get_customer_portal_fields(doctype, fields):
         "name",
         "subject",
         "status",
-        "priority",
-        "response_by",
-        "resolution_by",
-        "creation",
+        "creation",  # dimensy: prioritas dan batas SLA tidak ditampilkan ke customer
         *visible_custom_fields,
     ]
     fields = [field for field in fields if field.get("value") in customer_portal_fields]

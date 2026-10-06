@@ -9,6 +9,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_to_date, get_datetime, getdate, now_datetime
 
+from helpdesk.api.doc import get_list_data, sort_options
 from helpdesk.api.ticket import bulk_reply
 from helpdesk.consts import DEFAULT_SLA
 from helpdesk.helpdesk.doctype.hd_ticket.api import (
@@ -2373,6 +2374,32 @@ class TestHDTicket(FrappeTestCase):
         self.assertEqual(sent["user"]["name"], "Support Team")
         self.assertIsNone(sent["bcc"])
         self.assertNotIn(f'"{agent}"', json.dumps(as_customer, default=str))  # tanda kutip: "non_agent@..." memuat "agent@..."
+
+    def test_get_list_data_hides_internal_columns_from_non_agents(self):
+        # dimensy: daftar tiket customer tidak memuat kolom/baris internal, walau diminta klien
+        make_ticket(raised_by=non_agent, priority="High")
+        frappe.set_user("Administrator")
+        frappe.get_doc("User", non_agent).add_roles("HD Customer")
+
+        frappe.set_user(agent)
+        as_agent = get_list_data("HD Ticket", is_default=True)
+        self.assertIn("priority", [c["key"] for c in as_agent["columns"]])
+
+        frappe.set_user(non_agent)
+        as_customer = get_list_data(
+            "HD Ticket",
+            show_customer_portal_fields=False,  # klien mencoba meminta tampilan agen
+            rows=["name", "priority", "_assign"],
+            columns=[{"key": "priority", "label": "Priority"}],
+        )
+        keys = [c["key"] for c in as_customer["columns"]]
+        self.assertTrue(as_customer["data"])
+        for fieldname in INTERNAL_TICKET_FIELDS:
+            self.assertNotIn(fieldname, keys)
+            self.assertNotIn(fieldname, as_customer["rows"])
+            for row in as_customer["data"]:
+                self.assertNotIn(fieldname, row)
+        self.assertNotIn("priority", [o["value"] for o in sort_options("HD Ticket")])
 
     def tearDown(self):
         frappe.set_user("Administrator")
