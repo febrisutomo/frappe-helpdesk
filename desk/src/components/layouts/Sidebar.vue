@@ -42,7 +42,7 @@
     v-model="showHelpModal"
     v-model:articles="articles"
     appName="helpdesk"
-    title="Frappe Helpdesk"
+    title="Dimensy Helpdesk"
     :logo="logo"
     docsLink="https://docs.frappe.io/helpdesk"
     :afterSkip="(step: string) => capture('onboarding_step_skipped_' + step)"
