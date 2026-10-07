@@ -36,7 +36,7 @@ def get_list_data(
 ) -> dict:
     is_custom = False
 
-    # dimensy: non-agen selalu mendapat tampilan portal tanpa kolom internal, apa pun yang diminta klien
+    # dimensy: non-agents always get the portal view without internal columns, whatever the client asks for
     hide_internal = doctype == "HD Ticket" and not is_agent()
     if hide_internal:
         show_customer_portal_fields = True
@@ -125,7 +125,7 @@ def get_list_data(
         # the SLA columns can't tell fulfilled from due without these, and no saved view lists them
         for field in SLA_ROW_FIELDS:
             rows.append(field) if field not in rows else rows
-    if hide_internal:  # dimensy: termasuk kolom/baris yang diminta klien sendiri
+    if hide_internal:  # dimensy: includes columns/rows requested by the client itself
         rows = [r for r in rows if r not in INTERNAL_TICKET_FIELDS]
         columns = [c for c in columns if c.get("key") not in INTERNAL_TICKET_FIELDS]
     data = (
@@ -239,7 +239,7 @@ def get_list_data(
                     "options": options,
                 }
 
-    if hide_internal:  # dimensy: std_fields di atas menambahkan _assign ke rows
+    if hide_internal:  # dimensy: std_fields above adds _assign to rows
         rows = [r for r in rows if r not in INTERNAL_TICKET_FIELDS]
 
     return {
@@ -288,7 +288,7 @@ def get_filterable_fields(
         "name",
         "subject",
         "status",
-        "creation",  # dimensy: prioritas dan batas SLA tidak ditampilkan ke customer
+        "creation",  # dimensy: priority and SLA deadlines are not shown to customers
         "customer",
     ]
 
@@ -487,7 +487,7 @@ def get_customer_portal_fields(doctype, fields):
         "name",
         "subject",
         "status",
-        "creation",  # dimensy: prioritas dan batas SLA tidak ditampilkan ke customer
+        "creation",  # dimensy: priority and SLA deadlines are not shown to customers
         *visible_custom_fields,
     ]
     fields = [field for field in fields if field.get("value") in customer_portal_fields]

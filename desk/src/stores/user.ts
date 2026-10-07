@@ -15,7 +15,7 @@ export const useUserStore = defineStore("user", () => {
     initialData: [],
     transform(users) {
       for (const user of users) {
-        user.full_name = user.full_name || formatFullName(user.email); // dimensy: pakai nama lengkap dari server
+        user.full_name = user.full_name || formatFullName(user.email); // dimensy: use the full name from the server
         usersByName[user.name] = user;
       }
       return users;

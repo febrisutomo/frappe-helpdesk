@@ -59,7 +59,7 @@ def is_agent(user: str | None = None) -> bool:
     )
 
 
-# Dimensy: data internal tiket yang tidak boleh sampai ke non-agen (customer di portal).
+# Dimensy: internal ticket data that must never reach non-agents (portal customers).
 INTERNAL_TICKET_FIELDS = (
     "priority",
     "agent_group",
@@ -82,12 +82,12 @@ INTERNAL_TICKET_FIELDS = (
     "_assign",
     "_seen",
     "_liked_by",
-    "_comments",  # salinan balasan, memuat email agen
+    "_comments",  # copy of the replies, contains agent emails
 )
 
 
 def get_customer_agent_label() -> str:
-    """Nama pengirim yang ditampilkan ke customer untuk balasan agen (site config `helpdesk_customer_agent_name`)."""
+    """Sender name shown to customers for agent replies (site config `helpdesk_customer_agent_name`)."""
     return frappe.conf.get("helpdesk_customer_agent_name") or "Support Team"
 
 

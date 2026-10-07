@@ -60,7 +60,7 @@ def get_one(name: str, is_customer_portal: bool = False):
         frappe.throw(_("Ticket not found"), frappe.DoesNotExistError)
     ticket = ticket.pop()
 
-    if not _is_agent:  # dimensy: customer tidak boleh menerima data internal
+    if not _is_agent:  # dimensy: customers must not receive internal data
         for fieldname in INTERNAL_TICKET_FIELDS:
             ticket.pop(fieldname, None)
 
@@ -201,7 +201,7 @@ def get_communications(ticket: str):
     for c in communications:
         c.attachments = get_attachments("Communication", c.name)
         if not _is_agent and c.sent_or_received == "Sent":
-            # dimensy: customer hanya melihat nama tim, bukan nama/email agen
+            # dimensy: customers only see the team name, not the agent name/email
             label = get_customer_agent_label()
             c.sender = label
             c.bcc = None

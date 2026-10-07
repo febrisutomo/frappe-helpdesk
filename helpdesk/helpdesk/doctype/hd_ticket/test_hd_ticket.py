@@ -2338,7 +2338,7 @@ class TestHDTicket(FrappeTestCase):
         self.assertNotIn("Team B", permission_query(agent))
 
     def test_get_one_hides_internal_data_from_non_agents(self):
-        # dimensy: customer tidak boleh menerima prioritas, team, SLA, dan identitas agen
+        # dimensy: customers must not receive priority, team, SLA, or agent identity
         make_team("Team A", members=[agent])
         ticket = make_ticket(raised_by=non_agent, priority="High", agent_group="Team A")
         frappe.get_doc(
@@ -2366,17 +2366,17 @@ class TestHDTicket(FrappeTestCase):
         frappe.set_user("Administrator")
         frappe.get_doc("User", non_agent).add_roles("HD Customer")
         frappe.set_user(non_agent)
-        as_customer = get_one(ticket.name, is_customer_portal=False)  # klien tak bisa memilih
+        as_customer = get_one(ticket.name, is_customer_portal=False)  # the client cannot choose
         for fieldname in INTERNAL_TICKET_FIELDS:
             self.assertNotIn(fieldname, as_customer)
         sent = as_customer["communications"][-1]
         self.assertEqual(sent["sender"], "Support Team")
         self.assertEqual(sent["user"]["name"], "Support Team")
         self.assertIsNone(sent["bcc"])
-        self.assertNotIn(f'"{agent}"', json.dumps(as_customer, default=str))  # tanda kutip: "non_agent@..." memuat "agent@..."
+        self.assertNotIn(f'"{agent}"', json.dumps(as_customer, default=str))  # quotes: "non_agent@..." contains "agent@..."
 
     def test_get_list_data_hides_internal_columns_from_non_agents(self):
-        # dimensy: daftar tiket customer tidak memuat kolom/baris internal, walau diminta klien
+        # dimensy: the customer ticket list has no internal columns/rows, even when requested
         make_ticket(raised_by=non_agent, priority="High")
         frappe.set_user("Administrator")
         frappe.get_doc("User", non_agent).add_roles("HD Customer")
@@ -2388,7 +2388,7 @@ class TestHDTicket(FrappeTestCase):
         frappe.set_user(non_agent)
         as_customer = get_list_data(
             "HD Ticket",
-            show_customer_portal_fields=False,  # klien mencoba meminta tampilan agen
+            show_customer_portal_fields=False,  # the client tries to request the agent view
             rows=["name", "priority", "_assign"],
             columns=[{"key": "priority", "label": "Priority"}],
         )

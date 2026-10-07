@@ -46,7 +46,7 @@ export const useAgentStatusStore = defineStore("agentStatus", () => {
     fields: ["name", "agent_status", "category", "color", "enable", "status_order"],
     orderBy: "`tabHD Agent Status`.status_order",
     pageLength: 1000,
-    auto: Boolean(myAgentName), // dimensy: customer tidak boleh membaca HD Agent Status
+    auto: Boolean(myAgentName), // dimensy: customers are not allowed to read HD Agent Status
   });
 
   // Live availability keyed by HD Agent name. Seeded by fetches and kept current
