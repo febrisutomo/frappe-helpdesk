@@ -21,6 +21,17 @@
           :isSidebarCollapsed="isCollapsed"
         />
       </div>
+      <!-- dimensy: AGPL section 13, link to the source of this modified version -->
+      <a
+        v-if="isCustomerPortal && sourceCodeUrl"
+        :href="sourceCodeUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="px-4 py-1 text-p-xs text-ink-gray-5 hover:text-ink-gray-7"
+        :class="{ hidden: isCollapsed }"
+      >
+        {{ __("Source code") }}
+      </a>
       <SidebarItem
         v-if="isOnboardingStepsCompleted && !isCustomerPortal"
         :label="__('Help')"
@@ -211,6 +222,8 @@ const showPermissionNoticeBanner = computed(() => {
     configStore.showCustomerPortalPermissionNotice
   );
 });
+
+const sourceCodeUrl = window.source_code_url;
 
 const showOnboardingBanner = computed(() => {
   return (

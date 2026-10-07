@@ -38,6 +38,8 @@ def get_boot():
             "is_fc_site": is_fc_site(),
             "session_user": frappe.session.user,
             "agent": get_agent_name(),
+            # dimensy: AGPL section 13 - offer the source of the modified version to portal users
+            "source_code_url": frappe.conf.get("helpdesk_source_code_url") or "",
             "date_format": frappe.get_system_settings("date_format"),
             "time_format": frappe.get_system_settings("time_format"),
             "default_country": frappe.db.get_default("country"),
