@@ -23,7 +23,7 @@ from helpdesk.helpdesk.doctype.hd_ticket.hd_ticket import (
     has_permission,
     permission_query,
 )
-from helpdesk.utils import INTERNAL_TICKET_FIELDS
+from helpdesk.utils import INTERNAL_TICKET_FIELDS, is_internal_ticket_field
 from helpdesk.test_utils import (
     SLA_PRIORITY_NAME,
     add_comment,
@@ -2374,6 +2374,15 @@ class TestHDTicket(FrappeTestCase):
         self.assertEqual(sent["user"]["name"], "Support Team")
         self.assertIsNone(sent["bcc"])
         self.assertNotIn(f'"{agent}"', json.dumps(as_customer, default=str))  # quotes: "non_agent@..." contains "agent@..."
+
+    def test_is_internal_ticket_field_covers_type_and_custom_fields(self):
+        # dimensy: ticket type and every custom field (channel, platform, contact email) stay agent-only
+        self.assertTrue(is_internal_ticket_field("ticket_type"))
+        self.assertTrue(is_internal_ticket_field("custom_channel"))
+        self.assertTrue(is_internal_ticket_field("priority"))
+        self.assertFalse(is_internal_ticket_field("subject"))
+        self.assertFalse(is_internal_ticket_field("status"))
+        self.assertFalse(is_internal_ticket_field(None))
 
     def test_get_list_data_hides_internal_columns_from_non_agents(self):
         # dimensy: the customer ticket list has no internal columns/rows, even when requested

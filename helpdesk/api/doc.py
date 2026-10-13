@@ -8,7 +8,7 @@ from pypika import Criterion
 
 from helpdesk.api.dashboard import COUNT_NAME
 from helpdesk.utils import (
-    INTERNAL_TICKET_FIELDS,
+    is_internal_ticket_field,
     call_log_default_columns,
     check_permissions,
     contact_default_columns,
@@ -126,8 +126,8 @@ def get_list_data(
         for field in SLA_ROW_FIELDS:
             rows.append(field) if field not in rows else rows
     if hide_internal:  # dimensy: includes columns/rows requested by the client itself
-        rows = [r for r in rows if r not in INTERNAL_TICKET_FIELDS]
-        columns = [c for c in columns if c.get("key") not in INTERNAL_TICKET_FIELDS]
+        rows = [r for r in rows if not is_internal_ticket_field(r)]
+        columns = [c for c in columns if not is_internal_ticket_field(c.get("key"))]
     data = (
         frappe.get_list(
             doctype,
@@ -239,8 +239,9 @@ def get_list_data(
                     "options": options,
                 }
 
-    if hide_internal:  # dimensy: std_fields above adds _assign to rows
-        rows = [r for r in rows if r not in INTERNAL_TICKET_FIELDS]
+    if hide_internal:  # dimensy: std_fields above adds _assign to rows; filter metadata lists custom fields
+        rows = [r for r in rows if not is_internal_ticket_field(r)]
+        fields = [f for f in fields if not is_internal_ticket_field(f.get("value"))]
 
     return {
         "data": data,

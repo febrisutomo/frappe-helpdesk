@@ -16,7 +16,7 @@ from helpdesk.helpdesk.doctype.hd_settings.helpers import get_rendered_banner_ms
 from helpdesk.helpdesk.doctype.hd_ticket_template.api import get_fields_meta
 from helpdesk.helpdesk.doctype.hd_ticket_template.api import get_one as get_template
 from helpdesk.utils import (
-    INTERNAL_TICKET_FIELDS,
+    is_internal_ticket_field,
     agent_only,
     check_permissions,
     get_customer_agent_label,
@@ -61,8 +61,8 @@ def get_one(name: str, is_customer_portal: bool = False):
     ticket = ticket.pop()
 
     if not _is_agent:  # dimensy: customers must not receive internal data
-        for fieldname in INTERNAL_TICKET_FIELDS:
-            ticket.pop(fieldname, None)
+        for fieldname in [f for f in ticket if is_internal_ticket_field(f)]:
+            ticket.pop(fieldname)
 
     contact = (
         frappe.qb.from_(QBContact)

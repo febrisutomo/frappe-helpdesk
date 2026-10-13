@@ -83,7 +83,19 @@ INTERNAL_TICKET_FIELDS = (
     "_seen",
     "_liked_by",
     "_comments",  # copy of the replies, contains agent emails
+    "ticket_type",  # internal classification (e.g. security incident)
 )
+
+
+def is_internal_ticket_field(fieldname: str | None) -> bool:
+    """Whether a ticket field must be withheld from non-agents.
+
+    Custom fields count as internal: they are added for agents (channel, platform, contact email) and
+    a field meant for customers has to be exposed deliberately, not by default.
+    """
+    return bool(fieldname) and (
+        fieldname in INTERNAL_TICKET_FIELDS or fieldname.startswith("custom_")
+    )
 
 
 def get_customer_agent_label() -> str:
