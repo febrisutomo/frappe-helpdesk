@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}{% if title != "Pusat Bantuan" %} - Pusat Bantuan{% endif %}</title>
+<style>
+:root{--fg:#1f2933;--muted:#616e7c;--line:#e4e7eb;--bg:#fff;--card:#f7f8fa;--brand:#1d4ed8}
+@media (prefers-color-scheme:dark){:root{--fg:#e4e7eb;--muted:#9aa5b1;--line:#323f4b;--bg:#12181f;--card:#1b232c;--brand:#7aa2ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--brand)}
+header,main,footer{max-width:760px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
+header img{height:32px}
+header a{font-weight:600;text-decoration:none;color:var(--fg)}
+.crumb{color:var(--muted);font-size:14px;margin:0 0 8px}
+.card{display:block;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:10px 0;text-decoration:none;color:var(--fg)}
+.card small{display:block;color:var(--muted)}
+article table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
+article th,article td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+article img{max-width:100%;height:auto}
+footer{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  {% if logo %}<img src="{{ logo }}" alt="Dimensy">{% endif %}
+  <a href="/help">Pusat Bantuan</a>
+</header>
+<main>
+{% if categories is not none %}
+  <h1>Pusat Bantuan</h1>
+  {% for c in categories %}
+  <a class="card" href="/help/{{ c.name }}"><strong>{{ c.category_name }}</strong>
+    <small>{{ c.description or "" }} ({{ c.count }} artikel)</small></a>
+  {% endfor %}
+{% elif articles is not none %}
+  <p class="crumb"><a href="/help">Pusat Bantuan</a></p>
+  <h1>{{ category.category_name }}</h1>
+  {% for a in articles %}
+  <a class="card" href="/help/articles/{{ a.name }}"><strong>{{ a.title }}</strong><small>{{ a.summary }}</small></a>
+  {% endfor %}
+{% else %}
+  <p class="crumb"><a href="/help">Pusat Bantuan</a> / <a href="/help/{{ article.category }}">{{ article.category_name }}</a></p>
+  <article>
+    <h1>{{ article.title }}</h1>
+    {{ article.content }}
+  </article>
+{% endif %}
+</main>
+<footer>{% if source_code_url %}<a href="{{ source_code_url }}">Source code</a>{% endif %}</footer>
+</body>
+</html>
