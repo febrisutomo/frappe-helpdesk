@@ -24,24 +24,32 @@ def get_noun_phrases(blob: TextBlob):
 
 
 def search_with_enough_results(
-    prev_res: list, query: str, qtype="and"
+    prev_res: list, query: str, qtype="and", public_only: bool = False
 ) -> tuple[list, bool]:
     out = hd_search(query, qtype=qtype)
     if not out:
         return prev_res, len(prev_res) == NUM_RESULTS
-    items = prev_res + visible_items(out[0].get("items", []))
+    items = prev_res + visible_items(out[0].get("items", []), public_only)
     items = list({v["id"]: v for v in items}.values())[:NUM_RESULTS]  # unique results
     return items, len(items) == NUM_RESULTS
 
 
-def visible_items(items: list) -> list:
-    """dimensy: the index holds every Published article; customers only get Public ones."""
-    if is_agent():
+def visible_items(items: list, public_only: bool = False) -> list:
+    """dimensy: the index holds every Published article. Customers (and agents previewing the
+    customer portal, `public_only`) only get articles of Public categories."""
+    if is_agent() and not public_only:
         return items
     ids = {i["id"].split(":", 1)[1].split("#")[0] for i in items}
     if not ids:
         return []
-    allowed = set(frappe.get_list("HD Article", filters={"name": ["in", list(ids)]}, pluck="name"))
+    public = frappe.get_all("HD Article Category", filters={"visibility": "Public"}, pluck="name")
+    allowed = set(
+        frappe.get_all(
+            "HD Article",
+            filters={"name": ["in", list(ids)], "status": "Published", "category": ["in", public or [""]]},
+            pluck="name",
+        )
+    )
     return [i for i in items if i["id"].split(":", 1)[1].split("#")[0] in allowed]
 
 
@@ -82,24 +90,25 @@ def get_article_stats(article_name: str):
 
 
 @frappe.whitelist()
-def search(query: str) -> list:
+def search(query: str, public_only: bool = False) -> list:
+    public_only = bool(int(public_only)) if str(public_only).isdigit() else str(public_only).lower() == "true"
     query = sanitize_query(query)
-    ret, enough = search_with_enough_results([], query)
+    ret, enough = search_with_enough_results([], query, public_only=public_only)
     if enough:
         return ret
     blob = TextBlob(query)  # fallback
     if noun_phrases := get_noun_phrases(blob):
         query = " ".join(noun_phrases)
-        ret, enough = search_with_enough_results(ret, query)
+        ret, enough = search_with_enough_results(ret, query, public_only=public_only)
         if enough:
             return ret
-        ret, enough = search_with_enough_results(ret, query, qtype="or")
+        ret, enough = search_with_enough_results(ret, query, qtype="or", public_only=public_only)
         if enough:
             return ret
     if nouns := get_nouns(blob):
         query = " ".join(nouns)
-        ret, enough = search_with_enough_results(ret, query)
+        ret, enough = search_with_enough_results(ret, query, public_only=public_only)
         if enough:
             return ret
-        ret, enough = search_with_enough_results(ret, query, qtype="or")
+        ret, enough = search_with_enough_results(ret, query, qtype="or", public_only=public_only)
     return ret

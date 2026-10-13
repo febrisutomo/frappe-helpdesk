@@ -111,8 +111,10 @@ def move_to_category(category: str, articles: list[str], confirm_public: bool = 
 
 @frappe.whitelist()
 def get_categories():
+    # dimensy: customer-facing list, so Public only, whatever the role of the viewer
     categories = frappe.get_list(
         "HD Article Category",
+        filters={"visibility": "Public"},
         fields=["name", "category_name", "modified"],
     )
     for c in categories:
@@ -127,6 +129,8 @@ def get_categories():
 
 @frappe.whitelist()
 def get_category_articles(category: str):
+    if frappe.db.get_value("HD Article Category", category, "visibility") != "Public":
+        return []
     articles = frappe.get_list(
         "HD Article",
         filters={"category": category, "status": "Published"},

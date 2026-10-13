@@ -76,6 +76,7 @@
 
 <script setup lang="ts">
 import { capture } from "@/telemetry";
+import { isCustomerPortal } from "@/utils";
 import { createResource } from "frappe-ui";
 import { watch } from "vue";
 interface P {
@@ -96,6 +97,8 @@ watch(
     articles.update({
       params: {
         query: query,
+        // dimensy: the customer portal never suggests Internal articles, even to agents
+        public_only: isCustomerPortal.value ? 1 : 0,
       },
     });
     articles.reload();
