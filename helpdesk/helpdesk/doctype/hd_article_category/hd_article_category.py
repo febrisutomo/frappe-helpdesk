@@ -45,6 +45,13 @@ class HDArticleCategory(Document):
         articles = frappe.get_all(
             "HD Article", filters={"category": self.name}, pluck="name"
         )
+        # dimensy: the fallback below moves articles to General (Public); never do that to Internal ones
+        if articles and self.visibility == "Internal":
+            frappe.throw(
+                _(
+                    "This Internal category still has articles. Move or delete them first, otherwise they would become public in General."
+                )
+            )
 
         general_category = frappe.db.get_value(
             "HD Article Category", {"category_name": "General"}, "name"

@@ -48,15 +48,34 @@ def delete_articles(articles: list[str]):
         frappe.delete_doc("HD Article", article)
 
 
+def check_going_public(source_categories, target: str, confirmed: bool):
+    """dimensy: moving articles from an Internal category into a Public one publishes them,
+    so it needs an explicit confirmation from the client (`confirm_public`)."""
+    if confirmed or not target:
+        return
+    if frappe.db.get_value("HD Article Category", target, "visibility") != "Public":
+        return
+    for category in set(c for c in source_categories if c):
+        if frappe.db.get_value("HD Article Category", category, "visibility") == "Internal":
+            frappe.throw(
+                _("CONFIRM_PUBLIC: this makes Internal articles visible to customers and guests."),
+                frappe.ValidationError,
+            )
+
+
 @frappe.whitelist()
-def create_category(title: str):
+def create_category(title: str, visibility: str = "Internal"):
     if title.strip().lower() == "general":
         frappe.throw(
             _(
                 "General is a reserved category name. Please use a different name to proceed."
             )
         )
-    category = frappe.new_doc("HD Article Category", category_name=title).insert()
+    if visibility not in ("Public", "Internal"):
+        frappe.throw(_("Invalid visibility"))
+    category = frappe.new_doc(
+        "HD Article Category", category_name=title, visibility=visibility
+    ).insert()
     article = frappe.new_doc(
         "HD Article", title="New Article", category=category.name
     ).insert()
@@ -64,8 +83,13 @@ def create_category(title: str):
 
 
 @frappe.whitelist()
-def move_to_category(category: str, articles: list[str]):
+def move_to_category(category: str, articles: list[str], confirm_public: bool = False):
     frappe.has_permission("HD Article", "write", throw=True)
+    check_going_public(
+        [frappe.db.get_value("HD Article", a, "category") for a in articles],
+        category,
+        confirm_public,
+    )
 
     for article in articles:
         try:
@@ -117,8 +141,9 @@ def get_category_articles(category: str):
 
 
 @frappe.whitelist()
-def merge_category(source: str, target: str):
+def merge_category(source: str, target: str, confirm_public: bool = False):
     frappe.has_permission("HD Article Category", "delete", throw=True)
+    check_going_public([source], target, confirm_public)
 
     if source == target:
         frappe.throw(_("Source and target category cannot be same"))

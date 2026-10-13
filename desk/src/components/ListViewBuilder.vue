@@ -461,8 +461,19 @@ function getGroupedByRows(listRows, groupByField) {
       );
     }
 
+    // dimensy: Internal knowledge base categories carry a marker in the group header
+    const group = option
+      ? {
+          ...option,
+          title: option.label,
+          label:
+            option.visibility === "Internal"
+              ? `${option.label} · Internal`
+              : option.label,
+        }
+      : " ";
     let groupDetail = {
-      group: option || " ",
+      group,
       collapsed: false,
       rows: filteredRows,
       icon: h(FeatherIcon, {

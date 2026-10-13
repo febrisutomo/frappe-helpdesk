@@ -29,6 +29,7 @@
       :edit="editTitle"
       v-model="showCategoryModal"
       v-model:title="category.title"
+      v-model:visibility="category.visibility"
       @update="handleCategoryUpdate"
       @create="handleCategoryCreate"
     />
@@ -81,7 +82,9 @@ const { $dialog } = globalStore();
 const category = reactive({
   title: "",
   id: "",
+  visibility: "Internal",
 });
+const _visibility = ref("Internal");
 
 const _title = ref("");
 const listViewRef = ref(null);
@@ -138,7 +141,7 @@ const groupByActions = [
           id: groupedRow.group.value,
         },
         query: {
-          title: groupedRow.group.label,
+          title: groupedRow.group.title,
         },
       });
     },
@@ -149,9 +152,11 @@ const groupByActions = [
     onClick: (groupedRow) => {
       editTitle.value = true;
       showCategoryModal.value = true;
-      category.title = groupedRow.group.label;
+      category.title = groupedRow.group.title;
       category.id = groupedRow.group.value;
-      _title.value = groupedRow.group.label;
+      category.visibility = groupedRow.group.visibility || "Internal";
+      _title.value = groupedRow.group.title;
+      _visibility.value = category.visibility;
     },
   },
   {
@@ -159,7 +164,7 @@ const groupByActions = [
     icon: LucideMerge,
     onClick: (groupedRow) => {
       mergeModal.value = true;
-      category.title = groupedRow.group.label;
+      category.title = groupedRow.group.title;
       category.id = groupedRow.group.value;
     },
   },
@@ -167,12 +172,16 @@ const groupByActions = [
     label: __("Share"),
     icon: "lucide-link",
     onClick: async ({ group }) => {
-      const { label, value } = group;
+      // dimensy: public categories are read at /help; Internal ones have no public link
+      if (group.visibility !== "Public") {
+        toast.error(__("Internal categories have no public link."));
+        return;
+      }
       const url = new URL(window.location.href);
-      url.pathname = `/helpdesk/kb-public/${value}`;
+      url.pathname = `/help/${group.value}`;
       await copyToClipboard(
         url.toString(),
-        __("Category '{0}' link copied to clipboard", [label])
+        __("Category '{0}' link copied to clipboard", [group.title])
       );
     },
   },
@@ -220,11 +229,37 @@ const selectBannerActions = [
   },
 ];
 
-function handleMoveToCategory(category: string) {
+// dimensy: the server asks for a confirmation (CONFIRM_PUBLIC) before Internal articles become public
+function askPublic(retry: () => void) {
+  $dialog({
+    title: __("Publish Internal articles?"),
+    message: __(
+      "The target category is Public. These articles will be visible to customers and guests."
+    ),
+    actions: [
+      {
+        label: __("Publish"),
+        variant: "solid",
+        theme: "red",
+        onClick({ close }) {
+          retry();
+          close();
+        },
+      },
+    ],
+  });
+}
+const needsPublicConfirm = (error: any) =>
+  JSON.stringify(error?.messages || error?.message || "").includes(
+    "CONFIRM_PUBLIC"
+  );
+
+function handleMoveToCategory(category: string, confirm_public = false) {
   moveToCategory.submit(
     {
       category,
       articles: Array.from(listSelections.value),
+      confirm_public,
     },
     {
       onSuccess: () => {
@@ -235,6 +270,11 @@ function handleMoveToCategory(category: string) {
         toast.success(__("Articles moved successfully."));
       },
       onError: (error: Error) => {
+        if (needsPublicConfirm(error)) {
+          moveToModal.value = false;
+          askPublic(() => handleMoveToCategory(category, true));
+          return;
+        }
         const title = error?.messages?.[0] || error.message;
         toast.error(title);
         moveToModal.value = false;
@@ -247,6 +287,7 @@ function handleCategoryCreate() {
   newCategory.submit(
     {
       title: category.title,
+      visibility: category.visibility,
     },
     {
       onSuccess: (data: any) => {
@@ -283,8 +324,11 @@ function handleCategoryCreate() {
 }
 
 function handleCategoryUpdate() {
-  // if same title do nothing
-  if (category.title === _title.value) {
+  // if nothing changed, do nothing
+  if (
+    category.title === _title.value &&
+    category.visibility === _visibility.value
+  ) {
     showCategoryModal.value = false;
     editTitle.value = false;
     return;
@@ -293,8 +337,10 @@ function handleCategoryUpdate() {
     {
       doctype: "HD Article Category",
       name: category.id,
-      fieldname: "category_name",
-      value: category.title,
+      fieldname: {
+        category_name: category.title,
+        visibility: category.visibility,
+      },
     },
     {
       onSuccess: () => {
@@ -362,11 +408,16 @@ function handleDeleteArticles() {
   );
 }
 
-function handleMergeCategory(source: string, target: string) {
+function handleMergeCategory(
+  source: string,
+  target: string,
+  confirm_public = false
+) {
   mergeCategory.submit(
     {
       source,
       target,
+      confirm_public,
     },
     {
       onSuccess: () => {
@@ -376,6 +427,10 @@ function handleMergeCategory(source: string, target: string) {
         resetState();
       },
       onError: (error: Error) => {
+        if (needsPublicConfirm(error)) {
+          askPublic(() => handleMergeCategory(source, target, true));
+          return;
+        }
         const title = error?.messages?.[0] || error.message;
         toast.error(title);
       },
@@ -386,6 +441,8 @@ function handleMergeCategory(source: string, target: string) {
 function resetState() {
   category.title = "";
   category.id = "";
+  category.visibility = "Internal";
+  _visibility.value = "Internal";
   _title.value = "";
 }
 

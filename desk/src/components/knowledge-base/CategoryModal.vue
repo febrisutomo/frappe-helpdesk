@@ -19,6 +19,16 @@
             target.style.height = `${target.scrollHeight}px`;
           }"
         />
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-ink-gray-5">Visibility</label>
+          <select
+            v-model="visibility"
+            class="text-base rounded py-1.5 px-2 border border-[--surface-gray-2] bg-surface-gray-2 text-ink-gray-8 w-full"
+          >
+            <option value="Internal">Internal (agents only)</option>
+            <option value="Public">Public (customers and guests)</option>
+          </select>
+        </div>
       </div>
     </template>
   </Dialog>
@@ -45,6 +55,7 @@ const emit = defineEmits(["update", "create"]);
 
 const showDialog = defineModel<boolean>();
 const newTitle = defineModel<string>("title");
+const visibility = defineModel<string>("visibility", { default: "Internal" });
 
 const dialogTitle = computed(() =>
   props.edit ? "Edit Category" : "Create Category"

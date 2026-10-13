@@ -42,9 +42,10 @@ export const deleteArticles = createResource({
 // Category
 export const newCategory = createResource({
   url: "helpdesk.api.knowledge_base.create_category",
-  makeParams({ title }) {
+  makeParams({ title, visibility }) {
     return {
       title,
+      visibility,
     };
   },
   validate({ title }) {
@@ -54,17 +55,18 @@ export const newCategory = createResource({
 
 export const updateCategoryTitle = createResource({
   url: "frappe.client.set_value",
-  validate({ name, value }) {
-    if (!value) throw "Title is required";
+  validate({ value, fieldname }) {
+    if (!value && !fieldname?.category_name) throw "Title is required";
   },
 });
 
 export const moveToCategory = createResource({
   url: "helpdesk.api.knowledge_base.move_to_category",
-  makeParams({ category, articles }) {
+  makeParams({ category, articles, confirm_public }) {
     return {
       category,
       articles,
+      confirm_public,
     };
   },
   validate({ category, articles }) {
@@ -75,10 +77,11 @@ export const moveToCategory = createResource({
 
 export const mergeCategory = createResource({
   url: "helpdesk.api.knowledge_base.merge_category",
-  makeParams({ source, target }) {
+  makeParams({ source, target, confirm_public }) {
     return {
       source,
       target,
+      confirm_public,
     };
   },
   validate({ source, target }) {

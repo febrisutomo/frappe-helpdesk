@@ -188,6 +188,7 @@ def get_list_data(
                 options = list(set([d.get(group_by_field) for d in data]))
                 options = [u for u in options if u]
                 options = [category_name for category_name in options if category_name]
+                option_doctype = label_doc if label_doc else doctype
                 options = [
                     {
                         "label": frappe.db.get_value(
@@ -196,6 +197,10 @@ def get_list_data(
                             label_field if label_field else group_by_field,
                         ),
                         "value": option,
+                        # dimensy: lets the KB list mark Internal categories
+                        "visibility": frappe.db.get_value(option_doctype, option, "visibility")
+                        if option_doctype == "HD Article Category"
+                        else None,
                     }
                     for option in options
                     if option
