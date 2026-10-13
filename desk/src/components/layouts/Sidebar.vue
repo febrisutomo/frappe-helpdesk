@@ -494,6 +494,9 @@ async function getGeneralCategory() {
 function setUpOnboarding() {
   if (!authStore.isManager) return;
   setUp(steps);
+  // dimensy: setUp opens the help panel before the onboarding status is known, so it covered the
+  // ticket sidebar on every load; open it only from the banner or the shortcut
+  showHelpModal.value = false;
   useShortcut({ key: "h", meta: true }, () => {
     showHelpModal.value = !showHelpModal.value;
   });
