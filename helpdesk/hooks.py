@@ -46,6 +46,8 @@ scheduler_events = {
 }
 
 
+before_request = ["helpdesk.utils.restrict_internal_ticket_access"]
+
 website_route_rules = [
     {
         "from_route": "/helpdesk/<path:app_path>",

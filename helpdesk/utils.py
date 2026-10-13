@@ -1,6 +1,7 @@
 import functools
 import json
 import re
+from urllib.parse import unquote
 
 import frappe
 import phonenumbers
@@ -87,15 +88,73 @@ INTERNAL_TICKET_FIELDS = (
 )
 
 
+_SAFE_COUNT = re.compile(r"^count\((\*|name)\)( as \w+)?$")
+
+
+def _plain_field_name(expression: str) -> str | None:
+    """Reduce a client-supplied field expression to a bare field name, or None if it is not one.
+
+    Handles aliases ("priority as p"), table prefixes ("`tabHD Ticket`.priority") and case.
+    """
+    name = re.split(r"\s+as\s+", str(expression).strip(), flags=re.IGNORECASE)[0]
+    name = name.replace("`", "").strip().lower()
+    if name.startswith("tabhd ticket."):
+        name = name[len("tabhd ticket.") :]
+    return name if re.fullmatch(r"[a-z_][a-z0-9_]*", name) else None
+
+
 def is_internal_ticket_field(fieldname: str | None) -> bool:
-    """Whether a ticket field must be withheld from non-agents.
+    """Whether a ticket field expression must be withheld from non-agents.
 
     Custom fields count as internal: they are added for agents (channel, platform, contact email) and
-    a field meant for customers has to be exposed deliberately, not by default.
+    a field meant for customers has to be exposed deliberately, not by default. Anything that is not a
+    bare field name (functions, sub-queries, aliases hiding one) is treated as internal.
     """
-    return bool(fieldname) and (
-        fieldname in INTERNAL_TICKET_FIELDS or fieldname.startswith("custom_")
-    )
+    if not fieldname:
+        return False
+    if _SAFE_COUNT.match(str(fieldname).strip().lower()):
+        return False
+    name = _plain_field_name(fieldname)
+    return name is None or name in INTERNAL_TICKET_FIELDS or name.startswith("custom_")
+
+
+def _mentions_internal_ticket_field(text) -> bool:
+    """Whether free text (filters, order_by) refers to an internal ticket field anywhere."""
+    words = re.findall(r"[a-z_][a-z0-9_]*", json.dumps(text).lower() if not isinstance(text, str) else text.lower())
+    return any(w in INTERNAL_TICKET_FIELDS or w.startswith("custom_") for w in words)
+
+
+def restrict_internal_ticket_access():
+    """`before_request` hook: customers cannot ask the generic Frappe API for internal ticket data.
+
+    Field-level permissions hide the regular fields, but Frappe always includes `_assign` and `_comments`
+    and lets clients filter and sort by any readable column. For non-agents querying HD Ticket this drops
+    internal fields from `fields`/`fieldname` and refuses filters, ordering and grouping on them.
+    """
+    user = frappe.session.user
+    if user in ("Administrator", "Guest") or not getattr(frappe.local, "request", None) or is_agent(user):
+        return
+    form = frappe.local.form_dict
+    path = frappe.local.request.path or ""
+    doctype = form.get("doctype")
+    if path.startswith("/api/resource/"):
+        doctype = unquote(path[len("/api/resource/") :].split("/")[0])
+    if doctype != "HD Ticket":
+        return
+
+    for key in ("fields", "fieldname"):
+        value = form.get(key)
+        if value is None:
+            continue
+        parsed = frappe.parse_json(value) if isinstance(value, str) and value.strip()[:1] in "[{" else value
+        if isinstance(parsed, list):
+            form[key] = json.dumps([f for f in parsed if isinstance(f, str) and not is_internal_ticket_field(f)])
+        elif isinstance(parsed, str) and is_internal_ticket_field(parsed):
+            form[key] = "name"
+    for key in ("filters", "or_filters", "order_by", "group_by"):
+        value = form.get(key)
+        if value and _mentions_internal_ticket_field(value):
+            frappe.throw(_("Not permitted"), frappe.PermissionError)
 
 
 def get_customer_agent_label() -> str:

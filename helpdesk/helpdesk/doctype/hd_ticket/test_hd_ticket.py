@@ -2383,6 +2383,11 @@ class TestHDTicket(FrappeTestCase):
         self.assertFalse(is_internal_ticket_field("subject"))
         self.assertFalse(is_internal_ticket_field("status"))
         self.assertFalse(is_internal_ticket_field(None))
+        # client-supplied expressions: aliases, table prefixes, case and anything that is not a bare field name
+        for expression in ("priority as p", "`tabHD Ticket`.agent_group", "TICKET_TYPE", "(select 1)", "concat(priority, '')"):
+            self.assertTrue(is_internal_ticket_field(expression), expression)
+        for expression in ("name", "subject as s", "count(*)", "count(name) as total"):
+            self.assertFalse(is_internal_ticket_field(expression), expression)
 
     def test_get_list_data_hides_internal_columns_from_non_agents(self):
         # dimensy: the customer ticket list has no internal columns/rows, even when requested
