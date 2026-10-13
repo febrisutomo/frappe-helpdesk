@@ -106,6 +106,10 @@ article.doc{background:#fff;border:1px solid var(--line);border-radius:28px;padd
 .doc img{max-width:100%;height:auto;border-radius:12px}
 .doc blockquote{margin:1.2em 0;padding:4px 0 4px 18px;border-left:3px solid var(--primary);color:var(--ink-2)}
 .help-cta{margin-top:28px;padding:22px 24px;background:var(--wash);border:1px solid var(--light);border-radius:24px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+.contacts{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 18px;flex-basis:100%;order:2}
+.contacts a{font-weight:500;text-decoration:none}
+.contacts a:hover{text-decoration:underline}
+.help-cta .btn{order:3}
 .help-cta strong{font:500 17px var(--head);display:block}
 .help-cta span{color:var(--muted);font-size:14px}
 .back{display:inline-flex;gap:8px;align-items:center;margin-top:26px;font-weight:600;font-size:15px;text-decoration:none}
@@ -211,7 +215,12 @@ footer a:hover{color:var(--primary)}
       {{ article.content }}
     </article>
     <div class="help-cta">
-      <div><strong>Belum menemukan jawabannya?</strong><span>Buat tiket dan tim Dimensy Support akan membantu pada jam layanan.</span></div>
+      <div><strong>Belum menemukan jawabannya?</strong><span>Hubungi Dimensy Support pada jam layanan (Senin–Jumat 09.00–18.00 WIB).</span></div>
+      <ul class="contacts">
+        <li><a href="mailto:support@dimensy.id">support@dimensy.id</a></li>
+        <li><a href="https://wa.me/6285921218847">WhatsApp +62 859-2121-8847</a></li>
+        <li><a href="tel:+622139721720">(021) 3972 1720</a></li>
+      </ul>
       <a class="btn" href="/helpdesk/my-tickets/new">Buat Tiket</a>
     </div>
     <a class="back" href="/help/{{ article.category | urlencode }}">← Artikel lain di {{ article.category_label | e }}</a>
@@ -221,7 +230,7 @@ footer a:hover{color:var(--primary)}
 
 <footer>
   <div class="wrap">
-    <span>Dimensy Support</span>
+    <span>Dimensy Support · <a href="mailto:support@dimensy.id">support@dimensy.id</a> · <a href="https://wa.me/6285921218847">+62 859-2121-8847</a> · <a href="tel:+622139721720">(021) 3972 1720</a></span>
     <span><a href="/help">Pusat Bantuan</a> &nbsp;·&nbsp; <a href="/helpdesk/my-tickets/new">Buat Tiket</a> &nbsp;·&nbsp; <a href="https://dimensy.id">dimensy.id</a></span>
   </div>
 </footer>
