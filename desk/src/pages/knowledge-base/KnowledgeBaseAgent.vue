@@ -51,6 +51,8 @@ import MergeCategoryModal from "@/components/knowledge-base/MergeCategoryModal.v
 import MoveToCategoryModal from "@/components/knowledge-base/MoveToCategoryModal.vue";
 import { globalStore } from "@/stores/globalStore";
 import {
+  askPublic,
+  needsPublicConfirm,
   deleteArticles,
   deleteRes as deleteCategory,
   mergeCategory,
@@ -229,31 +231,6 @@ const selectBannerActions = [
   },
 ];
 
-// dimensy: the server asks for a confirmation (CONFIRM_PUBLIC) before Internal articles become public
-function askPublic(retry: () => void) {
-  $dialog({
-    title: __("Publish Internal articles?"),
-    message: __(
-      "The target category is Public. These articles will be visible to customers and guests."
-    ),
-    actions: [
-      {
-        label: __("Publish"),
-        variant: "solid",
-        theme: "red",
-        onClick({ close }) {
-          retry();
-          close();
-        },
-      },
-    ],
-  });
-}
-const needsPublicConfirm = (error: any) =>
-  JSON.stringify(error?.messages || error?.message || "").includes(
-    "CONFIRM_PUBLIC"
-  );
-
 function handleMoveToCategory(category: string, confirm_public = false) {
   moveToCategory.submit(
     {
@@ -272,7 +249,7 @@ function handleMoveToCategory(category: string, confirm_public = false) {
       onError: (error: Error) => {
         if (needsPublicConfirm(error)) {
           moveToModal.value = false;
-          askPublic(() => handleMoveToCategory(category, true));
+          askPublic($dialog, () => handleMoveToCategory(category, true));
           return;
         }
         const title = error?.messages?.[0] || error.message;
@@ -428,7 +405,7 @@ function handleMergeCategory(
       },
       onError: (error: Error) => {
         if (needsPublicConfirm(error)) {
-          askPublic(() => handleMergeCategory(source, target, true));
+          askPublic($dialog, () => handleMergeCategory(source, target, true));
           return;
         }
         const title = error?.messages?.[0] || error.message;

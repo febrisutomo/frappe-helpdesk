@@ -256,7 +256,10 @@ import CategoryModal from "@/components/knowledge-base/CategoryModal.vue";
 import MoveToCategoryModal from "@/components/knowledge-base/MoveToCategoryModal.vue";
 import { useScreenSize } from "@/composables/screen";
 import { useAuthStore } from "@/stores/auth";
+import { globalStore } from "@/stores/globalStore";
 import {
+  askPublic,
+  needsPublicConfirm,
   deleteRes as deleteArticle,
   incrementView,
   moveToCategory,
@@ -291,6 +294,7 @@ import { useRoute, useRouter } from "vue-router";
 import IconDot from "~icons/lucide/dot";
 import IconMoreHorizontal from "~icons/lucide/more-horizontal";
 
+const { $dialog } = globalStore();
 const extensions = buildEditorExtensions();
 const { isMobileView } = useScreenSize();
 
@@ -451,11 +455,12 @@ const isDirty = ref(false);
 
 const moveToModal = ref(false);
 
-function handleMoveToCategory(category: string) {
+function handleMoveToCategory(category: string, confirm_public = false) {
   moveToCategory.submit(
     {
       category,
       articles: [props.articleId],
+      confirm_public,
     },
     {
       onSuccess: () => {
@@ -464,6 +469,11 @@ function handleMoveToCategory(category: string) {
         toast.success(__(`Article has been successfully moved.`));
       },
       onError: (error: Error) => {
+        if (needsPublicConfirm(error)) {
+          moveToModal.value = false;
+          askPublic($dialog, () => handleMoveToCategory(category, true));
+          return;
+        }
         let msg = error?.messages?.[0] || error.message;
         toast.error(msg);
         moveToModal.value = false;

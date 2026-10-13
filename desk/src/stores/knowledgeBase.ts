@@ -1,4 +1,32 @@
 import { createResource } from "frappe-ui";
+import { __ } from "@/translation";
+
+// dimensy: the server answers CONFIRM_PUBLIC when Internal articles would become public.
+// Both KB pages (list and article) ask the agent, then retry with confirm_public = true.
+export const needsPublicConfirm = (error: any) =>
+  JSON.stringify(error?.messages || error?.message || "").includes(
+    "CONFIRM_PUBLIC"
+  );
+
+export function askPublic($dialog: Function, retry: () => void) {
+  $dialog({
+    title: __("Publish Internal articles?"),
+    message: __(
+      "The target category is Public. These articles will be visible to customers and guests."
+    ),
+    actions: [
+      {
+        label: __("Publish"),
+        variant: "solid",
+        theme: "red",
+        onClick({ close }) {
+          retry();
+          close();
+        },
+      },
+    ],
+  });
+}
 
 // Title
 export const newArticle = createResource({
