@@ -3,52 +3,253 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ title | e }}{% if title != "Pusat Bantuan" %} - Pusat Bantuan{% endif %}</title>
+<meta name="color-scheme" content="light">
+<title>{{ title | e }}{% if title != "Pusat Bantuan" %} · Pusat Bantuan{% endif %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--fg:#1f2933;--muted:#616e7c;--line:#e4e7eb;--bg:#fff;--card:#f7f8fa;--brand:#1d4ed8}
-@media (prefers-color-scheme:dark){:root{--fg:#e4e7eb;--muted:#9aa5b1;--line:#323f4b;--bg:#12181f;--card:#1b232c;--brand:#7aa2ff}}
+:root{
+  --paper:#f7f6f2; --card:#ffffff; --ink:#14213d; --ink-2:#3d4a63; --muted:#6b7488;
+  --line:#e3e1d9; --line-2:#d3d0c4; --blue:#1565d8; --blue-2:#0b4fb3; --tint:#e9f1fd; --seal:#c2a160;
+  --serif:"Newsreader",Georgia,serif; --sans:"Plus Jakarta Sans",system-ui,sans-serif;
+  color-scheme:light;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
-a{color:var(--brand)}
-header,main,footer{max-width:760px;margin:0 auto;padding:16px}
-header{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
-header img{height:32px}
-header a{font-weight:600;text-decoration:none;color:var(--fg)}
-.crumb{color:var(--muted);font-size:14px;margin:0 0 8px}
-.card{display:block;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:10px 0;text-decoration:none;color:var(--fg)}
-.card small{display:block;color:var(--muted)}
-article table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
-article th,article td{border:1px solid var(--line);padding:6px 10px;text-align:left}
-article img{max-width:100%;height:auto}
-footer{color:var(--muted);font-size:13px}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font:400 16px/1.65 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--blue)}
+a:hover{color:var(--blue-2)}
+:focus-visible{outline:2px solid var(--blue);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+
+/* top bar */
+.bar{background:rgba(255,255,255,.86);backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar .wrap{display:flex;align-items:center;gap:14px;height:64px}
+.bar img{height:30px;width:auto;display:block}
+.bar .sep{width:1px;height:22px;background:var(--line-2)}
+.bar .name{font-weight:600;color:var(--ink);text-decoration:none;letter-spacing:-.01em}
+.bar .portal{margin-left:auto;font-size:14px;font-weight:600;text-decoration:none;color:var(--ink-2);border:1px solid var(--line-2);padding:7px 14px;border-radius:999px;background:#fff;white-space:nowrap}
+.bar .portal:hover{border-color:var(--ink-2);color:var(--ink)}
+
+/* hero with a guilloche pattern, like the security print on certificates */
+.hero{position:relative;z-index:2;border-bottom:1px solid var(--line);background:
+  radial-gradient(120% 90% at 85% -10%,var(--tint) 0,rgba(233,241,253,0) 60%),var(--paper)}
+.hero .deco{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.hero svg.guilloche{position:absolute;right:-120px;top:-150px;width:620px;height:620px;opacity:.55;pointer-events:none}
+.hero .wrap{position:relative;padding-top:64px;padding-bottom:56px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
+.eyebrow::before{content:"";width:18px;height:2px;background:var(--seal)}
+h1,h2{font-family:var(--serif);font-weight:500;letter-spacing:-.015em;color:var(--ink)}
+.hero h1{font-size:clamp(38px,6vw,60px);line-height:1.04;margin:14px 0 12px}
+.hero p.lead{max-width:560px;color:var(--ink-2);font-size:18px;margin:0 0 28px}
+
+/* quick search */
+.search{position:relative;max-width:620px}
+.field{position:relative}
+.search input{width:100%;font:500 16px var(--sans);color:var(--ink);padding:16px 18px 16px 50px;border:1px solid var(--line-2);border-radius:14px;background:#fff;box-shadow:0 1px 0 rgba(20,33,61,.04),0 12px 30px -18px rgba(20,33,61,.35)}
+.search input::placeholder{color:var(--muted)}
+.search input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 4px rgba(21,101,216,.12)}
+.field svg{position:absolute;left:18px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.results{position:absolute;left:0;right:0;top:100%;z-index:4;list-style:none;margin:8px 0 0;padding:6px;background:#fff;border:1px solid var(--line);border-radius:14px;max-height:340px;overflow:auto;box-shadow:0 18px 40px -24px rgba(20,33,61,.45)}
+.results[hidden]{display:none}
+.results a{display:block;padding:10px 12px;border-radius:9px;text-decoration:none;color:var(--ink)}
+.results a:hover,.results a:focus{background:var(--tint)}
+.results small{display:block;color:var(--muted);font-size:13px}
+.results .empty{padding:10px 12px;color:var(--muted)}
+
+/* category grid */
+main{padding:44px 0 72px}
+.section-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 18px}
+.section-title h2{font-size:26px;margin:0}
+.section-title span{color:var(--muted);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;margin:0;padding:0}
+.cat{position:relative;display:flex;gap:16px;height:100%;padding:22px 22px 20px;background:var(--card);border:1px solid var(--line);border-radius:16px;text-decoration:none;color:var(--ink);transition:border-color .2s,transform .2s,box-shadow .2s}
+.cat:hover{border-color:var(--line-2);transform:translateY(-2px);box-shadow:0 18px 34px -26px rgba(20,33,61,.5);color:var(--ink)}
+.cat .no{font-family:var(--serif);font-size:15px;color:var(--seal);font-weight:600;min-width:24px;padding-top:2px}
+.cat strong{display:block;font-size:17px;font-weight:600;letter-spacing:-.01em;margin-bottom:4px}
+.cat p{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+.cat .count{display:inline-block;margin-top:12px;font-size:12px;font-weight:600;color:var(--blue);background:var(--tint);padding:3px 9px;border-radius:999px}
+
+/* category and article pages */
+.crumb{font-size:14px;color:var(--muted);margin:0 0 18px}
+.crumb a{color:var(--ink-2);text-decoration:none}
+.crumb a:hover{color:var(--blue)}
+.crumb span{margin:0 8px;color:var(--line-2)}
+.page-head{padding:40px 0 30px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,var(--paper))}
+.page-head h1{font-size:clamp(30px,4.6vw,44px);line-height:1.12;margin:0}
+.page-head p.sub{color:var(--ink-2);margin:10px 0 0;max-width:640px}
+.list{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.list li+li{border-top:1px solid var(--line)}
+.list a{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:start;padding:20px 22px;text-decoration:none;color:var(--ink);transition:background .15s}
+.list a:hover{background:#fbfaf7}
+.list .no{font-family:var(--serif);color:var(--seal);font-weight:600;padding-top:1px}
+.list strong{display:block;font-weight:600;font-size:17px;letter-spacing:-.01em}
+.list small{display:block;color:var(--muted);font-size:14px;margin-top:4px;line-height:1.55}
+.list .arrow{color:var(--line-2);transition:transform .2s,color .2s;padding-top:2px}
+.list a:hover .arrow{color:var(--blue);transform:translateX(3px)}
+
+article.doc{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:36px 40px;margin-top:-22px;position:relative;box-shadow:0 30px 60px -48px rgba(20,33,61,.6)}
+.page-head p.meta{font-size:13px;color:var(--muted);margin:12px 0 0}
+.doc{font-size:16.5px;color:var(--ink-2)}
+.doc>*:first-child{margin-top:0}
+.doc h2,.doc h3{font-family:var(--sans);font-weight:700;color:var(--ink);letter-spacing:-.01em;margin:1.6em 0 .5em}
+.doc h2{font-size:21px}.doc h3{font-size:18px}
+.doc p{margin:0 0 1em}
+.doc ul,.doc ol{padding-left:1.3em;margin:0 0 1.1em}
+.doc li{margin:.3em 0}
+.doc li::marker{color:var(--seal);font-weight:600}
+.doc strong{color:var(--ink);font-weight:600}
+.doc table{width:100%;border-collapse:collapse;margin:1.2em 0;font-size:15px;display:block;overflow-x:auto}
+.doc th{background:#f3f1ea;color:var(--ink);font-weight:600;text-align:left}
+.doc th,.doc td{border:1px solid var(--line);padding:10px 12px;vertical-align:top}
+.doc img{max-width:100%;height:auto;border-radius:10px}
+.doc blockquote{margin:1.2em 0;padding:4px 0 4px 18px;border-left:3px solid var(--seal);color:var(--ink-2)}
+.narrow{max-width:800px}
+.back{display:inline-flex;gap:8px;align-items:center;margin-top:26px;font-weight:600;font-size:15px;text-decoration:none}
+
+main{flex:1 0 auto}
+footer{border-top:1px solid var(--line);background:#fff}
+footer .wrap{display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between;align-items:center;padding-top:22px;padding-bottom:26px;color:var(--muted);font-size:14px}
+footer a{color:var(--ink-2);font-weight:600;text-decoration:none}
+footer a:hover{color:var(--blue)}
+
+/* one orchestrated entrance */
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.rise{animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
+.grid li,.list li{animation:rise .55s cubic-bezier(.2,.7,.2,1) both}
+{% for i in range(1, 16) %}.grid li:nth-child({{ i }}),.list li:nth-child({{ i }}){animation-delay:{{ 80 + i * 45 }}ms}{% endfor %}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+@media (max-width:640px){
+  .bar .sep,.bar .name{display:none}
+  .hero .wrap{padding-top:40px;padding-bottom:36px}
+  .hero p.lead{font-size:16px}
+  .hero svg.guilloche{width:420px;height:420px;right:-170px;top:-120px}
+  article.doc{padding:24px 20px;border-radius:14px}
+  .list a{padding:18px 16px;gap:12px}
+}
 </style>
 </head>
 <body>
-<header>
-  {% if logo %}<img src="{{ logo | e }}" alt="Dimensy">{% endif %}
-  <a href="/help">Pusat Bantuan</a>
+<header class="bar">
+  <div class="wrap">
+    <a href="/help" aria-label="Pusat Bantuan">{% if logo %}<img src="{{ logo | e }}" alt="Dimensy">{% else %}<strong>Dimensy</strong>{% endif %}</a>
+    <span class="sep" aria-hidden="true"></span>
+    <a class="name" href="/help">Pusat Bantuan</a>
+    <a class="portal" href="/helpdesk">Masuk portal PIC</a>
+  </div>
 </header>
-<main>
+
 {% if categories is not none %}
-  <h1>Pusat Bantuan</h1>
-  {% for c in categories %}
-  <a class="card" href="/help/{{ c.name | urlencode }}"><strong>{{ c.category_name | e }}</strong>
-    <small>{{ (c.description or "") | e }} ({{ c.count }} artikel)</small></a>
-  {% endfor %}
-{% elif articles is not none %}
-  <p class="crumb"><a href="/help">Pusat Bantuan</a></p>
-  <h1>{{ category.category_name | e }}</h1>
-  {% for a in articles %}
-  <a class="card" href="/help/articles/{{ a.name | urlencode }}"><strong>{{ a.title | e }}</strong><small>{{ a.summary | e }}</small></a>
-  {% endfor %}
-{% else %}
-  <p class="crumb"><a href="/help">Pusat Bantuan</a> / <a href="/help/{{ article.category | urlencode }}">{{ article.category_name | e }}</a></p>
-  <article>
-    <h1>{{ article.title | e }}</h1>
-    {{ article.content }}
-  </article>
-{% endif %}
+<section class="hero">
+  <div class="deco"><svg class="guilloche" viewBox="-100 -100 200 200" aria-hidden="true">
+    <g fill="none" stroke="#1565d8" stroke-width=".22">
+      {% for i in range(18) %}<ellipse rx="92" ry="34" transform="rotate({{ i * 10 }})"/>{% endfor %}
+    </g>
+    <g fill="none" stroke="#c2a160" stroke-width=".18">
+      {% for i in range(24) %}<ellipse rx="58" ry="20" transform="rotate({{ i * 7.5 }})"/>{% endfor %}
+    </g>
+  </svg></div>
+  <div class="wrap rise">
+    <span class="eyebrow">Dimensy Support</span>
+    <h1>Pusat Bantuan</h1>
+    <p class="lead">Panduan tanda tangan elektronik, e-Meterai, Easy Dimensy, dan layanan tiket. Cari jawabannya di sini sebelum menghubungi kami.</p>
+    <div class="search" role="search">
+      <div class="field">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Cari, mis. lupa password" autocomplete="off" aria-label="Cari artikel" aria-controls="results">
+      </div>
+      <ul id="results" class="results" hidden>
+        {% for a in index %}
+        <li data-text="{{ (a.title ~ ' ' ~ a.category_label) | lower | e }}"><a href="/help/articles/{{ a.name | urlencode }}">{{ a.title | e }}<small>{{ a.category_label | e }}</small></a></li>
+        {% endfor %}
+        <li class="empty" hidden>Tidak ada artikel yang cocok. Coba kata lain, atau hubungi kami.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<main>
+  <div class="wrap">
+    <div class="section-title"><h2>Topik</h2><span>{{ categories | length }} topik · {{ index | length }} artikel</span></div>
+    <ul class="grid">
+      {% for c in categories %}
+      <li><a class="cat" href="/help/{{ c.name | urlencode }}">
+        <span class="no">{{ "%02d" | format(loop.index) }}</span>
+        <span><strong>{{ c.label | e }}</strong><p>{{ (c.description or "") | e }}</p><span class="count">{{ c.count }} artikel</span></span>
+      </a></li>
+      {% endfor %}
+    </ul>
+  </div>
 </main>
-<footer>{% if source_code_url %}<a href="{{ source_code_url | e }}">Source code</a>{% endif %}</footer>
+
+{% elif articles is not none %}
+<section class="page-head">
+  <div class="wrap rise">
+    <p class="crumb"><a href="/help">Pusat Bantuan</a><span>/</span>{{ category.label | e }}</p>
+    <h1>{{ category.label | e }}</h1>
+    {% if category.description %}<p class="sub">{{ category.description | e }}</p>{% endif %}
+  </div>
+</section>
+<main>
+  <div class="wrap">
+    <ul class="list">
+      {% for a in articles %}
+      <li><a href="/help/articles/{{ a.name | urlencode }}">
+        <span class="no">{{ "%02d" | format(loop.index) }}</span>
+        <span><strong>{{ a.title | e }}</strong><small>{{ a.summary | e }}</small></span>
+        <span class="arrow" aria-hidden="true">→</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+  </div>
+</main>
+
+{% else %}
+<section class="page-head">
+  <div class="wrap narrow rise">
+    <p class="crumb"><a href="/help">Pusat Bantuan</a><span>/</span><a href="/help/{{ article.category | urlencode }}">{{ article.category_label | e }}</a></p>
+    <h1>{{ article.title | e }}</h1>
+    <p class="meta">Diperbarui {{ article.updated }}</p>
+  </div>
+</section>
+<main style="padding-top:0">
+  <div class="wrap narrow">
+    <article class="doc rise">
+      {{ article.content }}
+    </article>
+    <a class="back" href="/help/{{ article.category | urlencode }}">← Artikel lain di {{ article.category_label | e }}</a>
+  </div>
+</main>
+{% endif %}
+
+<footer>
+  <div class="wrap">
+    <span>Dimensy Support</span>
+    <span><a href="/help">Pusat Bantuan</a> &nbsp;·&nbsp; <a href="/helpdesk">Portal PIC</a></span>
+  </div>
+</footer>
+
+{% if categories is not none %}
+<script>
+(function () {
+  var q = document.getElementById("q"), box = document.getElementById("results");
+  if (!q || !box) return;
+  var items = box.querySelectorAll("li[data-text]"), empty = box.querySelector(".empty");
+  q.addEventListener("input", function () {
+    var words = q.value.toLowerCase().trim().split(/\s+/).filter(Boolean), shown = 0;
+    items.forEach(function (li) {
+      var hit = words.length && words.every(function (w) { return li.dataset.text.indexOf(w) !== -1; });
+      li.hidden = !hit; if (hit) shown++;
+    });
+    box.hidden = !words.length; empty.hidden = shown > 0;
+  });
+  q.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { q.value = ""; box.hidden = true; }
+    if (e.key === "ArrowDown") { var f = box.querySelector("li[data-text]:not([hidden]) a"); if (f) { e.preventDefault(); f.focus(); } }
+  });
+})();
+</script>
+{% endif %}
 </body>
 </html>
