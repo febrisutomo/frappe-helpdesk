@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ title }}{% if title != "Pusat Bantuan" %} - Pusat Bantuan{% endif %}</title>
+<title>{{ title | e }}{% if title != "Pusat Bantuan" %} - Pusat Bantuan{% endif %}</title>
 <style>
 :root{--fg:#1f2933;--muted:#616e7c;--line:#e4e7eb;--bg:#fff;--card:#f7f8fa;--brand:#1d4ed8}
 @media (prefers-color-scheme:dark){:root{--fg:#e4e7eb;--muted:#9aa5b1;--line:#323f4b;--bg:#12181f;--card:#1b232c;--brand:#7aa2ff}}
@@ -25,30 +25,30 @@ footer{color:var(--muted);font-size:13px}
 </head>
 <body>
 <header>
-  {% if logo %}<img src="{{ logo }}" alt="Dimensy">{% endif %}
+  {% if logo %}<img src="{{ logo | e }}" alt="Dimensy">{% endif %}
   <a href="/help">Pusat Bantuan</a>
 </header>
 <main>
 {% if categories is not none %}
   <h1>Pusat Bantuan</h1>
   {% for c in categories %}
-  <a class="card" href="/help/{{ c.name }}"><strong>{{ c.category_name }}</strong>
-    <small>{{ c.description or "" }} ({{ c.count }} artikel)</small></a>
+  <a class="card" href="/help/{{ c.name | urlencode }}"><strong>{{ c.category_name | e }}</strong>
+    <small>{{ (c.description or "") | e }} ({{ c.count }} artikel)</small></a>
   {% endfor %}
 {% elif articles is not none %}
   <p class="crumb"><a href="/help">Pusat Bantuan</a></p>
-  <h1>{{ category.category_name }}</h1>
+  <h1>{{ category.category_name | e }}</h1>
   {% for a in articles %}
-  <a class="card" href="/help/articles/{{ a.name }}"><strong>{{ a.title }}</strong><small>{{ a.summary }}</small></a>
+  <a class="card" href="/help/articles/{{ a.name | urlencode }}"><strong>{{ a.title | e }}</strong><small>{{ a.summary | e }}</small></a>
   {% endfor %}
 {% else %}
-  <p class="crumb"><a href="/help">Pusat Bantuan</a> / <a href="/help/{{ article.category }}">{{ article.category_name }}</a></p>
+  <p class="crumb"><a href="/help">Pusat Bantuan</a> / <a href="/help/{{ article.category | urlencode }}">{{ article.category_name | e }}</a></p>
   <article>
-    <h1>{{ article.title }}</h1>
+    <h1>{{ article.title | e }}</h1>
     {{ article.content }}
   </article>
 {% endif %}
 </main>
-<footer>{% if source_code_url %}<a href="{{ source_code_url }}">Source code</a>{% endif %}</footer>
+<footer>{% if source_code_url %}<a href="{{ source_code_url | e }}">Source code</a>{% endif %}</footer>
 </body>
 </html>
