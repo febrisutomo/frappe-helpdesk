@@ -55,6 +55,7 @@ def sanitize_query(query: str) -> str:
 
 @frappe.whitelist()
 def get_article_stats(article_name: str):
+    frappe.has_permission("HD Article", doc=article_name, throw=True)
     views = frappe.db.get_value("HD Article", article_name, "views")
 
     likes = frappe.db.count(

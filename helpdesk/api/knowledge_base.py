@@ -147,12 +147,14 @@ def get_general_category():
 
 @frappe.whitelist()
 def get_category_title(category: str):
+    frappe.has_permission("HD Article Category", doc=category, throw=True)
     return frappe.db.get_value("HD Article Category", category, "category_name")
 
 
 @frappe.whitelist()
 @rate_limit(key="article", seconds=60 * 60)
 def increment_views(article: str):
+    frappe.has_permission("HD Article", doc=article, throw=True)
     views = frappe.db.get_value("HD Article", article, "views") or 0
     views += 1
     frappe.db.set_value("HD Article", article, "views", views, update_modified=False)
