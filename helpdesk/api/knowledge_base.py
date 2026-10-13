@@ -4,15 +4,14 @@ from frappe import _
 from frappe.rate_limiter import rate_limit
 from frappe.utils import get_user_info_for_avatar
 
-from helpdesk.utils import is_agent
 
 
 @frappe.whitelist(allow_guest=True)
 def get_article(name: str):
-    article = frappe.get_doc("HD Article", name).as_dict()
-
-    if not is_agent() and article["status"] != "Published":
-        frappe.throw(_("Access denied"), frappe.PermissionError)
+    doc = frappe.get_doc("HD Article", name)
+    # dimensy: Draft/Archived and Internal articles are agent-only
+    doc.check_permission("read")
+    article = doc.as_dict()
 
     author = get_user_info_for_avatar(article["author"])
     feedback = (

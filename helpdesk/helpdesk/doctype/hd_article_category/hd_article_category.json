@@ -9,6 +9,7 @@
  "engine": "InnoDB",
  "field_order": [
   "category_name",
+  "visibility",
   "description",
   "column_break_iczs",
   "icon"
@@ -20,6 +21,16 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Name"
+  },
+  {
+   "default": "Internal",
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Visibility",
+   "options": "Internal\nPublic",
+   "reqd": 1,
+   "description": "Public: shown to customers and guests. Internal: agents only."
   },
   {
    "allow_in_quick_entry": 1,

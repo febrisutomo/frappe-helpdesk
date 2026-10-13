@@ -5,6 +5,8 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from helpdesk.utils import is_agent
+
 
 class HDArticleCategory(Document):
     def validate(self):
@@ -55,3 +57,14 @@ class HDArticleCategory(Document):
                 frappe.db.set_value("HD Article", article, "category", general_category)
         except Exception as e:
             frappe.db.rollback()
+
+
+# dimensy: customers and guests only see Public categories
+def permission_query(user: str) -> str:
+    if is_agent(user):
+        return ""
+    return "`tabHD Article Category`.visibility = 'Public'"
+
+
+def has_permission(doc: Document, ptype: str, user: str) -> bool:
+    return is_agent(user) or doc.visibility == "Public"

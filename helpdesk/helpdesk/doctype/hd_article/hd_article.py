@@ -6,7 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint
 
-from helpdesk.utils import capture_event
+from helpdesk.utils import capture_event, is_agent
 
 
 class HDArticle(Document):
@@ -124,3 +124,27 @@ class HDArticle(Document):
         :return: Generated slug
         """
         return self.title.lower().replace(" ", "-")
+
+
+# dimensy: customers and guests only see Published articles in Public categories
+PUBLIC_ARTICLE_SQL = (
+    "`tabHD Article`.status = 'Published' and `tabHD Article`.category in "
+    "(select name from `tabHD Article Category` where visibility = 'Public')"
+)
+
+
+def permission_query(user: str) -> str:
+    if is_agent(user):
+        return ""
+    return PUBLIC_ARTICLE_SQL
+
+
+def has_permission(doc: Document, ptype: str, user: str) -> bool:
+    if is_agent(user):
+        return True
+    return (
+        doc.status == "Published"
+        and bool(doc.category)
+        and frappe.db.get_value("HD Article Category", doc.category, "visibility")
+        == "Public"
+    )

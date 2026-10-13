@@ -5,6 +5,7 @@ from textblob import TextBlob
 from textblob.exceptions import MissingCorpusError
 
 from helpdesk.search import NUM_RESULTS
+from helpdesk.utils import is_agent
 from helpdesk.search import search as hd_search
 
 
@@ -28,9 +29,20 @@ def search_with_enough_results(
     out = hd_search(query, qtype=qtype)
     if not out:
         return prev_res, len(prev_res) == NUM_RESULTS
-    items = prev_res + out[0].get("items", [])
+    items = prev_res + visible_items(out[0].get("items", []))
     items = list({v["id"]: v for v in items}.values())[:NUM_RESULTS]  # unique results
     return items, len(items) == NUM_RESULTS
+
+
+def visible_items(items: list) -> list:
+    """dimensy: the index holds every Published article; customers only get Public ones."""
+    if is_agent():
+        return items
+    ids = {i["id"].split(":", 1)[1].split("#")[0] for i in items}
+    if not ids:
+        return []
+    allowed = set(frappe.get_list("HD Article", filters={"name": ["in", list(ids)]}, pluck="name"))
+    return [i for i in items if i["id"].split(":", 1)[1].split("#")[0] in allowed]
 
 
 def sanitize_query(query: str) -> str:
