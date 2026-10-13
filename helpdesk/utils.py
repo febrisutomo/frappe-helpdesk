@@ -118,10 +118,38 @@ def is_internal_ticket_field(fieldname: str | None) -> bool:
     return name is None or name in INTERNAL_TICKET_FIELDS or name.startswith("custom_")
 
 
-def _mentions_internal_ticket_field(text) -> bool:
-    """Whether free text (filters, order_by) refers to an internal ticket field anywhere."""
-    words = re.findall(r"[a-z_][a-z0-9_]*", json.dumps(text).lower() if not isinstance(text, str) else text.lower())
-    return any(w in INTERNAL_TICKET_FIELDS or w.startswith("custom_") for w in words)
+def _strings_in(value) -> list[str]:
+    """Every string in an already decoded filter structure (keys and values, any depth)."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [t for k, v in value.items() for t in _strings_in(k) + _strings_in(v)]
+    if isinstance(value, (list, tuple)):
+        return [t for v in value for t in _strings_in(v)]
+    return []
+
+
+def _mentions_internal_ticket_field(value) -> bool:
+    """Whether a filter, `order_by` or `group_by` refers to an internal ticket field.
+
+    Works on the decoded structure, because that is what Frappe executes: JSON escapes such as
+    "\\u0070riority" are decoded first, so a raw-text scan cannot be bypassed that way.
+    """
+    if isinstance(value, str) and value.strip()[:1] in ("[", "{"):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            pass  # not JSON: treated as plain text below
+    for text in _strings_in(value):
+        for term in re.split(r"[,\s]+", text.lower()):
+            term = term.strip("()`\"'")
+            if term in ("", "asc", "desc"):
+                continue
+            if "." in term:  # `tabHD Ticket`.priority
+                term = term.rsplit(".", 1)[1].strip("`\"'")
+            if term in INTERNAL_TICKET_FIELDS or term.startswith("custom_"):
+                return True
+    return False
 
 
 def restrict_internal_ticket_access():
@@ -137,20 +165,22 @@ def restrict_internal_ticket_access():
     form = frappe.local.form_dict
     path = frappe.local.request.path or ""
     doctype = form.get("doctype")
-    if path.startswith("/api/resource/"):
-        doctype = unquote(path[len("/api/resource/") :].split("/")[0])
-    if doctype != "HD Ticket":
+    for prefix in ("/api/resource/", "/api/v2/document/", "/api/v2/doctype/"):  # REST v1 and v2 name the doctype in the path
+        if path.startswith(prefix):
+            doctype = unquote(path[len(prefix) :].split("/")[0])
+    if str(doctype or "").strip().lower() != "hd ticket":
         return
 
-    for key in ("fields", "fieldname"):
+    # every parameter that names the columns to return (get_list uses `pluck`, reportview `field`)
+    for key in ("fields", "fieldname", "field", "pluck", "group_by_field"):
         value = form.get(key)
         if value is None:
             continue
         parsed = frappe.parse_json(value) if isinstance(value, str) and value.strip()[:1] in "[{" else value
         if isinstance(parsed, list):
             form[key] = json.dumps([f for f in parsed if isinstance(f, str) and not is_internal_ticket_field(f)])
-        elif isinstance(parsed, str) and is_internal_ticket_field(parsed):
-            form[key] = "name"
+        elif not isinstance(parsed, str) or is_internal_ticket_field(parsed):
+            form[key] = "name"  # internal field, or a shape we cannot vet (e.g. a JSON object): fail closed
     for key in ("filters", "or_filters", "order_by", "group_by"):
         value = form.get(key)
         if value and _mentions_internal_ticket_field(value):
