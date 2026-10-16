@@ -110,20 +110,6 @@
                     <TicketSLA />
                   </div>
                 </template>
-                <div
-                  class="flex items-center border-b px-6 py-3 text-base leading-5"
-                >
-                  <div class="w-[126px] text-sm text-ink-gray-5">
-                    {{ __("Source") }}
-                  </div>
-                  <div>
-                    {{
-                      ticket.doc?.via_customer_portal
-                        ? __("Portal")
-                        : __("Mail")
-                    }}
-                  </div>
-                </div>
                 <!-- Ticket Fields -->
                 <h3 class="px-6 pt-3 text-base-semibold">
                   {{ __("Details") }}

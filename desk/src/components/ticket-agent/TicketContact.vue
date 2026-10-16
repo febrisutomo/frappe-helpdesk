@@ -28,11 +28,6 @@
         >
           #{{ ticket.doc.name }}
         </p>
-        <div class="flex items-center">
-          <span>{{
-            ticket.doc.via_customer_portal ? __("via Portal") : __("via Email")
-          }}</span>
-        </div>
       </div>
     </div>
     <Tooltip v-if="isCallingEnabled" :text="__('Call contact')">
