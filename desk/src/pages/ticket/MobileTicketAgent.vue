@@ -367,14 +367,9 @@ const ticketFields = computed(() => {
   const fieldsMeta = getFields();
   if (!fieldsMeta || fieldsMeta.length === 0) return [];
 
-  const coreFieldNames = [
-    "ticket_type",
-    "agent_group",
-    "priority",
-    "customer",
-    "subject",
-    "status",
-  ];
+  // dimensy: Type and Priority stay in the Details list (the mobile view has no Overview), so the agent can triage
+  // from a phone. Team is the selector at the top, customer only applies to B2B and is left to the desktop view.
+  const coreFieldNames = ["agent_group", "customer", "subject", "status"];
   let custom_fields = customizations.data?.custom_fields || [];
   custom_fields = custom_fields.filter(
     (f) => !coreFieldNames.includes(f.fieldname)

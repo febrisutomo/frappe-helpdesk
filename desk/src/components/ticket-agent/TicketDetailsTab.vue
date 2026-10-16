@@ -185,7 +185,9 @@ const { notifyTicketUpdate } = useNotifyTicketUpdate(ticket.value?.name);
 const dateFormat = window.date_format;
 const { getStatus, colorMap } = useTicketStatusStore();
 
-const CORE_FIELDS = ["priority", "ticket_type", "customer", "agent_group"];
+// dimensy: Overview is about handling the ticket (what, where, how urgent, which team). The reporter side
+// (contact, customer, channel) stays in More Details; Customer only applies to B2B, so it is shown there when set.
+const CORE_FIELDS = ["ticket_type", "custom_platform", "priority", "agent_group"];
 
 const coreFields = computed(() => {
   const fieldsMeta = getFields();
@@ -212,7 +214,7 @@ const customFields = computed(() => {
 
   if (!customizations.value.data || customizations.value.loading) return [];
   let customFields = customizations.value.data?.custom_fields || [];
-  const excludedFields = [...CORE_FIELDS, "subject", "status"];
+  const excludedFields = [...CORE_FIELDS, "customer", "subject", "status"];
   customFields = customFields.filter(
     (f) => !excludedFields.includes(f.fieldname)
   );
@@ -228,6 +230,18 @@ const customFields = computed(() => {
       return getFieldInFormat(f, fieldMeta);
     })
     .filter(Boolean);
+  // dimensy: Customer follows the Contact, only for B2B tickets (individual and Easy Dimensy tickets have none)
+  if (ticket.value.doc?.customer) {
+    let customer = getField("customer");
+    if (customer) {
+      customer = parseField(customer, ticket.value.doc);
+      customer["required"] = customer.reqd;
+      const formatted = getFieldInFormat(customer, customer);
+      formatted["visible"] = true;
+      const at = _customFields.findIndex((f) => f.fieldname === "contact");
+      _customFields.splice(at + 1, 0, formatted);
+    }
+  }
   return _customFields;
 });
 
