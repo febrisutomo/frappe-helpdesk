@@ -669,3 +669,37 @@ def get_country_from_timezone(time_zone: str):
         "Country", {"time_zones": ["like", f"%{time_zone}%"]}, "name"
     )
     return country or None
+
+
+def strip_internal_ticket_fields(response=None, request=None):
+    """after_request hook (dimensy P17): remove internal ticket fields from JSON responses for non-agents.
+
+    P10/P11 vet what customers ask for, but endpoints that save a document answer with the whole
+    document: frappe.client.set_value (used by the customer portal itself), save, insert, run_doc_method
+    and savedocs return every field of the ticket. Filtering the response covers all of them, including
+    endpoints added later. Only JSON bodies that mention an HD Ticket are parsed.
+    """
+    if response is None or frappe.session.user in ("Administrator", "Guest") or is_agent():
+        return
+    if "json" not in (response.content_type or "") or b'"HD Ticket"' not in response.get_data():
+        return
+    try:
+        data = json.loads(response.get_data())
+    except ValueError:
+        return
+
+    def scrub(value):
+        if isinstance(value, dict):
+            if value.get("doctype") == "HD Ticket":
+                for key in [k for k in value if is_internal_ticket_field(k)]:
+                    del value[key]
+            for item in value.values():
+                scrub(item)
+        elif isinstance(value, list):
+            for item in value:
+                scrub(item)
+
+    scrub(data)
+    from frappe.utils.response import json_handler
+
+    response.set_data(json.dumps(data, default=json_handler, separators=(",", ":")))

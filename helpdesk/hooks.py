@@ -47,6 +47,7 @@ scheduler_events = {
 
 
 before_request = ["helpdesk.utils.restrict_internal_ticket_access"]
+after_request = ["helpdesk.utils.strip_internal_ticket_fields"]
 
 website_route_rules = [
     {
