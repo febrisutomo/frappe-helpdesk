@@ -11,9 +11,14 @@ declare global {
 export function initSocket() {
   let host = window.location.hostname;
   let siteName = window.site_name || host;
-  let port = window.location.port ? `:${socketio_port}` : "";
-  let protocol = port ? "http" : "https";
-  let url = `${protocol}://${host}${port}/${siteName}`;
+  // Production builds are served behind nginx, which proxies /socket.io on the page's own
+  // origin; only the Vite dev server needs the separate socketio port.
+  let url = `${window.location.origin}/${siteName}`;
+  if (import.meta.env.DEV) {
+    let port = window.location.port ? `:${socketio_port}` : "";
+    let protocol = port ? "http" : "https";
+    url = `${protocol}://${host}${port}/${siteName}`;
+  }
 
   const socket = io(url, {
     withCredentials: true,
