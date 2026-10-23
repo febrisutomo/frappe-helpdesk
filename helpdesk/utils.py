@@ -179,6 +179,10 @@ def restrict_internal_ticket_access():
         parsed = frappe.parse_json(value) if isinstance(value, str) and value.strip()[:1] in "[{" else value
         if isinstance(parsed, list):
             form[key] = json.dumps([f for f in parsed if isinstance(f, str) and not is_internal_ticket_field(f)])
+        elif isinstance(parsed, dict) and key == "fieldname":
+            # set_value with several fields at once (the portal closes a ticket with its feedback this way)
+            kept = {k: v for k, v in parsed.items() if isinstance(k, str) and not is_internal_ticket_field(k)}
+            form[key] = json.dumps(kept) if kept else "name"
         elif not isinstance(parsed, str) or is_internal_ticket_field(parsed):
             form[key] = "name"  # internal field, or a shape we cannot vet (e.g. a JSON object): fail closed
     for key in ("filters", "or_filters", "order_by", "group_by"):
