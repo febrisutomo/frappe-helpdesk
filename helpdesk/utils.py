@@ -179,8 +179,14 @@ def restrict_internal_ticket_access():
         parsed = frappe.parse_json(value) if isinstance(value, str) and value.strip()[:1] in "[{" else value
         if isinstance(parsed, list):
             form[key] = json.dumps([f for f in parsed if isinstance(f, str) and not is_internal_ticket_field(f)])
-        elif isinstance(parsed, dict) and key == "fieldname":
-            # set_value with several fields at once (the portal closes a ticket with its feedback this way)
+        elif (
+            isinstance(parsed, dict)
+            and key == "fieldname"
+            and path.rstrip("/").endswith("/frappe.client.set_value")
+            and all(v is None or isinstance(v, (str, int, float)) for v in parsed.values())
+        ):
+            # set_value with several fields at once (the portal closes a ticket with its feedback this way).
+            # Only there: read endpoints treat a dict as SQL functions, e.g. {"MAX": "priority"}.
             kept = {k: v for k, v in parsed.items() if isinstance(k, str) and not is_internal_ticket_field(k)}
             form[key] = json.dumps(kept) if kept else "name"
         elif not isinstance(parsed, str) or is_internal_ticket_field(parsed):
