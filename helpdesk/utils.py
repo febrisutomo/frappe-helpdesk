@@ -152,6 +152,26 @@ def _mentions_internal_ticket_field(value) -> bool:
     return False
 
 
+def _is_set_value_call(path: str, form) -> bool:
+    """True only when the request runs frappe.client.set_value, read the way Frappe reads the method name."""
+    if form.get("cmd") not in (None, "frappe.client.set_value"):
+        return False
+    for prefix in ("/api/method/", "/api/v2/method/"):
+        if path.startswith(prefix):
+            return unquote(path[len(prefix) :]).rstrip("/") == "frappe.client.set_value"
+    return False
+
+
+def _is_plain_value(value) -> bool:
+    """A value to store, not a field reference: scalars only, and never the name of an internal field."""
+    if value is None or isinstance(value, (int, float)):
+        return True
+    if not isinstance(value, str):
+        return False
+    name = _plain_field_name(value)
+    return not (name and (name in INTERNAL_TICKET_FIELDS or name.startswith("custom_")))
+
+
 def restrict_internal_ticket_access():
     """`before_request` hook: customers cannot ask the generic Frappe API for internal ticket data.
 
@@ -182,8 +202,8 @@ def restrict_internal_ticket_access():
         elif (
             isinstance(parsed, dict)
             and key == "fieldname"
-            and path.rstrip("/").endswith("/frappe.client.set_value")
-            and all(v is None or isinstance(v, (str, int, float)) for v in parsed.values())
+            and _is_set_value_call(path, form)
+            and all(_is_plain_value(v) for v in parsed.values())
         ):
             # set_value with several fields at once (the portal closes a ticket with its feedback this way).
             # Only there: read endpoints treat a dict as SQL functions, e.g. {"MAX": "priority"}.
