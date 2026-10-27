@@ -15,8 +15,15 @@ def after_insert(doc, method=None):
         or not frappe.db.exists("HD Ticket", doc.reference_name)
     ):
         return
-    # any user can create a ToDo; only an agent (or the system) assigning a ticket may ring someone's bell
-    if frappe.session.user != "Administrator" and not frappe.db.exists("HD Agent", frappe.session.user):
+    # any user can create a ToDo; only an agent (or the system) assigning a ticket may ring someone's bell.
+    # Exception: the assignment rule runs in the customer's session while a portal ticket is being created.
+    # HD Ticket.after_insert flags that request, which a customer cannot do from a separate ToDo insert.
+    is_new_ticket_assignment = frappe.flags.get("hd_ticket_inserting") == doc.reference_name
+    if (
+        not is_new_ticket_assignment
+        and frappe.session.user != "Administrator"
+        and not frappe.db.exists("HD Agent", frappe.session.user)
+    ):
         return
     frappe.get_doc(
         {
