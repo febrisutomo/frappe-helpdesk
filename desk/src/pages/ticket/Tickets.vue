@@ -188,7 +188,7 @@ const options = computed(() => ({
       custom: ({ item }) => {
         const status = getStatus(item);
         const label = isCustomerPortal.value
-          ? status?.["label_customer"]
+          ? __(status?.["label_customer"])
           : status?.["label_agent"];
         return h(
           "div",

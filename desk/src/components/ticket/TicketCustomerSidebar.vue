@@ -104,7 +104,7 @@ const ticketBasicInfo = computed(() => [
   },
   {
     label: __("Status"),
-    value: ticket.data.status,
+    value: __(ticket.data.status),
     bold: true,
   },
 ]);

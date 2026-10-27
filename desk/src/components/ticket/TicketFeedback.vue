@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-4 border-b px-5 pb-3">
     <div class="flex items-start text-base leading-5">
-      <div class="min-w-[126px] text-sm">Rating</div>
+      <div class="min-w-[126px] text-sm">{{ __("Rating") }}</div>
       <div class="">
         <StarRating :rating="ticket.feedback_rating" />
       </div>
