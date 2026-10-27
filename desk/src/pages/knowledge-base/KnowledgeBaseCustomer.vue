@@ -13,7 +13,7 @@
           'max-w-[310px] md:max-w-[856px] !top-1 md:min-w-[856px]',
         ]"
         v-model="query"
-        placeholder="Ask a question..."
+        :placeholder="__('Ask a question...')"
         size="md"
         :autofocus="true"
       />

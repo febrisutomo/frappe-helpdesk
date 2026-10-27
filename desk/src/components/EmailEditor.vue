@@ -189,12 +189,12 @@
             <EditorFixedMenu :items="fullToolbar" />
           </div>
           <div class="flex items-center justify-end gap-x-2 sm:mt-0 w-[40%]">
-            <Button label="Discard" @click="handleDiscard" />
+            <Button :label="__('Discard')" @click="handleDiscard" />
             <Button
               variant="solid"
               :disabled="isDisabled"
               :loading="sendMail.loading"
-              :label="label"
+              :label="__(label)"
               @click="
                 () => {
                   submitMail();

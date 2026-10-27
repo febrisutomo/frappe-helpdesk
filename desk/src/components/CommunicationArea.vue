@@ -44,7 +44,7 @@
           <EmailEditor
             ref="emailEditorRef"
             :label="
-              isMobileView ? 'Send' : isMac ? 'Send (⌘ + ⏎)' : 'Send (Ctrl + ⏎)'
+              isMobileView ? __('Send') : isMac ? __('Send (⌘ + ⏎)') : __('Send (Ctrl + ⏎)')
             "
             placeholder="Hi John, we are looking into this issue."
             :ticketId="ticketId"
@@ -81,13 +81,13 @@
               isMobileView
                 ? 'Comment'
                 : isMac
-                ? 'Comment (⌘ + ⏎)'
-                : 'Comment (Ctrl + ⏎)'
+                ? __('Comment (⌘ + ⏎)')
+                : __('Comment (Ctrl + ⏎)')
             "
             :ticketId="ticketId"
             :editable="showCommentBox"
             :doctype="doctype"
-            placeholder="@John could you please look into this?"
+            :placeholder="__('@John could you please look into this?')"
             @submit="
               () => {
                 showCommentBox = false;

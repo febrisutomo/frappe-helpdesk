@@ -2,7 +2,7 @@
   <div class="flex w-[382px] flex-col border-s gap-4">
     <!-- Ticket ID -->
     <div class="flex items-center justify-between border-b px-5 py-3">
-      <span class="cursor-copy text-lg-semibold">Ticket details</span>
+      <span class="cursor-copy text-lg-semibold">{{ __("Ticket details") }}</span>
     </div>
     <!-- user info and sla info -->
     <div class="flex flex-col gap-4 pt-0 px-5 py-3 border-b">
@@ -91,6 +91,7 @@ import { Field } from "@/types";
 import { dateFormat, dateTooltipFormat } from "@/utils";
 import { Avatar, dayjs, Tooltip } from "frappe-ui";
 import { computed, inject } from "vue";
+import { __ } from "@/translation";
 
 const emit = defineEmits(["open"]);
 
@@ -98,11 +99,11 @@ const ticket = inject(ITicket);
 
 const ticketBasicInfo = computed(() => [
   {
-    label: "Ticket ID",
+    label: __("Ticket ID"),
     value: ticket.data.name,
   },
   {
-    label: "Status",
+    label: __("Status"),
     value: ticket.data.status,
     bold: true,
   },
@@ -112,7 +113,7 @@ const ticketAdditionalInfo = computed(() => {
   const fields = [
     {
       fieldname: "subject",
-      label: "Subject",
+      label: __("Subject"),
       value: ticket.data.subject,
     },
   ];
@@ -124,7 +125,7 @@ const ticketAdditionalInfo = computed(() => {
     )
     .map((field: Field) => {
       const option = {
-        label: field.label,
+        label: __(field.label),
         value: ticket.data[field.fieldname],
       };
       if (field.fieldtype === "Date") {

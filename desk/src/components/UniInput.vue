@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-1.5" v-if="field.display_via_depends_on">
     <span class="block text-sm text-ink-gray-7">
-      {{ field.label }}
+      {{ __(field.label) }}
       <span v-if="field.required" class="place-self-center text-ink-red-6">
         *
       </span>
@@ -31,6 +31,7 @@
 import { Autocomplete, Link } from "@/components";
 import { APIOptions, Field } from "@/types";
 import { parseApiOptions } from "@/utils";
+import { __ } from "@/translation";
 import {
   createResource,
   DatePicker,
@@ -127,14 +128,14 @@ const placeholder = computed(() => {
     return props.field.placeholder;
   }
   if (props.field.fieldtype === "Data" && !props.field.url_method) {
-    return "Type something";
+    return __("Type something");
   } else if (
     props.field.fieldtype === "Select" ||
     props.field.fieldtype === "Link"
   ) {
-    return "Select an option";
+    return __("Select an option");
   }
-  return "Type something";
+  return __("Type something");
 });
 
 function emitUpdate(fieldname: Field["fieldname"], value: Value) {
