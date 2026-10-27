@@ -12,7 +12,11 @@ def after_insert(doc, method=None):
         or not doc.allocated_to
         or doc.allocated_to == frappe.session.user
         or not frappe.db.exists("HD Agent", doc.allocated_to)
+        or not frappe.db.exists("HD Ticket", doc.reference_name)
     ):
+        return
+    # any user can create a ToDo; only an agent (or the system) assigning a ticket may ring someone's bell
+    if frappe.session.user != "Administrator" and not frappe.db.exists("HD Agent", frappe.session.user):
         return
     frappe.get_doc(
         {
