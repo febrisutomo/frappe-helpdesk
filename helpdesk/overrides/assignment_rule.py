@@ -62,3 +62,32 @@ class HelpdeskAssignmentRule(AssignmentRule):
             return super().get_user(doc)
         finally:
             setattr(self, user_pool_fieldname, original_pool)
+
+    def do_assignment(self, doc):
+        """Ring the assignee's bell for a ticket assigned by this rule in a session the ToDo hook refuses.
+
+        A portal ticket is assigned while the customer's session is active, so extends/todo.py (which only
+        trusts agents and Administrator) stays silent. The rule engine is server code that a customer cannot
+        steer, so it may announce its own assignment. For agent and Administrator sessions the ToDo hook has
+        already rung the bell; nothing is added there.
+        """
+        assigned = super().do_assignment(doc)
+        if (
+            assigned
+            and doc.get("doctype") == "HD Ticket"
+            and self.last_user
+            and self.last_user != frappe.session.user
+            and frappe.db.exists("HD Agent", self.last_user)
+            and frappe.session.user != "Administrator"
+            and not frappe.db.exists("HD Agent", frappe.session.user)
+        ):
+            frappe.get_doc(
+                {
+                    "doctype": "HD Notification",
+                    "user_from": frappe.session.user,
+                    "user_to": self.last_user,
+                    "reference_ticket": doc.get("name"),
+                    "notification_type": "Assignment",
+                }
+            ).insert(ignore_permissions=True)
+        return assigned

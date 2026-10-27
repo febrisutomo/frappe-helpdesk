@@ -168,9 +168,6 @@ class HDTicket(Document):
             frappe.throw(_("Could not send feedback email,due to: {0}").format(e))
 
     def after_insert(self):
-        # dimensy: marks this request as the one creating the ticket, so the assignment rule's ToDo (created in
-        # the customer's session on the portal) may still ring the assignee's bell; see extends/todo.py
-        frappe.flags.hd_ticket_inserting = self.name
 
         # Telemetry Event
         self.capture_ticket_created_telemetry_events()
