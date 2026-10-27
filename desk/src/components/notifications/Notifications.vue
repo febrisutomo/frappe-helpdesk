@@ -59,13 +59,13 @@
                 {{ n.user_from }}
               </span>
               <span v-if="n.notification_type === 'Mention'"
-                >mentioned you in ticket</span
+                >{{ __("mentioned you in ticket") }}</span
               >
               <span v-if="n.notification_type === 'Assignment'"
-                >assigned you a ticket</span
+                >{{ __("assigned you a ticket") }}</span
               >
               <span v-if="n.notification_type === 'Reaction'">
-                {{ n.message || "has reopened the ticket" }}
+                {{ n.message || __("has reopened the ticket") }}
               </span>
             </span>
             <span class="font-medium text-ink-gray-9"

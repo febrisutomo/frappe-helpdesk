@@ -7,7 +7,7 @@
       </div>
     </div>
     <div class="flex items-start text-base leading-5" v-if="ticket.feedback">
-      <div class="min-w-[126px] text-sm">Feedback</div>
+      <div class="min-w-[126px] text-sm">{{ __("Feedback") }}</div>
       <div class="text-ink-gray-8">
         {{ ticket.feedback }}
       </div>
@@ -16,7 +16,7 @@
       v-if="ticket.feedback_extra"
       class="flex items-start text-base leading-5"
     >
-      <div class="min-w-[126px] text-sm">Comment</div>
+      <div class="min-w-[126px] text-sm">{{ __("Comment") }}</div>
       <div class="text-ink-gray-8">
         {{ ticket.feedback_extra }}
       </div>

@@ -166,7 +166,7 @@ const sections = computed(() => {
   const _sections = [];
   if (recentTickets.length) {
     _sections.push({
-      label: "Recent Tickets",
+      label: __("Recent Tickets"),
       tooltipMessage: "Tickets recently raised by this contact/customer",
       hideLabel: false,
       opened: true,

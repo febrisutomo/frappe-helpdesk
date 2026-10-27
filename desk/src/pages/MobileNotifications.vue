@@ -46,7 +46,7 @@
               __("assigned you a ticket")
             }}</span>
             <span v-if="n.notification_type === 'Reaction'">{{
-              __("has reopened the ticket")
+              n.message || __("has reopened the ticket")
             }}</span>
             <span class="font-medium text-ink-gray-9">{{
               n.reference_ticket

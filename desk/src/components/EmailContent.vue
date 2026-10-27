@@ -44,16 +44,44 @@ const gmailReplyToContent = doc.querySelectorAll("div.gmail_quote");
 const outlookReplyToContent = doc.querySelectorAll("div#appendonsend");
 const replyToContent = doc.querySelectorAll("p.reply-to-content");
 
+const citeQuoteContent = doc.querySelectorAll('blockquote[type="cite"]');
+const outlookDesktopReplyContent = doc.querySelectorAll("div#divRplyFwdMsg");
+
 if (doc.body.children.length === 0) {
   // Plain-text emails (e.g. from Thunderbird) arrive as text with newlines and no spacing losing formatting.
   const plainText = doc.body.innerHTML.replace(/\n\n/g, "\n");
-  _content.value = `<div class="whitespace-pre-wrap">${plainText}</div>`;
+  _content.value = foldPlainTextQuote(plainText);
 } else if (gmailReplyToContent.length) {
   _content.value = parseReplyToContent(doc, "div.gmail_quote", true);
 } else if (outlookReplyToContent.length) {
   _content.value = parseReplyToContent(doc, "div#appendonsend");
 } else if (replyToContent.length) {
   _content.value = parseReplyToContent(doc, "p.reply-to-content");
+} else if (citeQuoteContent.length) {
+  // Apple Mail, Thunderbird and Roundcube (HTML mode) quote the earlier message in <blockquote type="cite">
+  _content.value = parseReplyToContent(doc, 'blockquote[type="cite"]', true);
+} else if (outlookDesktopReplyContent.length) {
+  _content.value = parseReplyToContent(doc, "div#divRplyFwdMsg");
+}
+
+// Plain-text replies mark the earlier message with an attribution line ("On ... wrote:") and ">" prefixes.
+// Fold everything from the first such line; the full text stays in the email and opens with the "..." button.
+function foldPlainTextQuote(text: string) {
+  const lines = text.split("\n");
+  const attribution = /^\s*(On .{5,200} wrote:|Pada .{5,200} menulis:|-{2,}\s*(Original Message|Pesan Asli)\s*-{2,})\s*$/i;
+  const quoted = /^\s*(&gt;|>)/;
+  let cut = lines.findIndex((line) => attribution.test(line));
+  if (cut === -1) cut = lines.findIndex((line) => quoted.test(line));
+  const wrap = (body: string) => `<div class="whitespace-pre-wrap">${body}</div>`;
+  // nothing before the quote (the reply is only a quotation): show it all
+  if (cut === -1 || lines.slice(0, cut).join("").trim() === "") return wrap(text);
+  const id = Math.random().toString(36).substring(2, 7);
+  return (
+    wrap(lines.slice(0, cut).join("\n")) +
+    `<div class="replied-content"><label class="collapse" for="${id}">...</label>` +
+    `<input id="${id}" class="replyCollapser" type="checkbox">` +
+    `<div class="whitespace-pre-wrap">${lines.slice(cut).join("\n")}</div></div>`
+  );
 }
 
 function parseReplyToContent(

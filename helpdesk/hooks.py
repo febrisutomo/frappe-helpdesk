@@ -81,6 +81,9 @@ user_invitation = {
 }
 
 doc_events = {
+    "ToDo": {
+        "after_insert": "helpdesk.extends.todo.after_insert",
+    },
     "Assignment Rule": {
         "on_trash": "helpdesk.extends.assignment_rule.on_assignment_rule_trash",
         "validate": "helpdesk.extends.assignment_rule.on_assignment_rule_validate",

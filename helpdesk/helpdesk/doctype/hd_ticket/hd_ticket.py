@@ -228,19 +228,22 @@ class HDTicket(Document):
             if (
                 self.get_doc_before_save()
                 and self.get_doc_before_save().status_category != "Open"
+                # a customer reply (portal, or the mail puller running as Administrator) is announced by
+                # notify_customer_reply; this notice is for an agent who reopens the ticket by hand
+                and frappe.db.exists("HD Agent", frappe.session.user)
             ):
                 agents = self.get_assigned_agents()
                 if agents:
                     for agent in agents:
                         if agent.name == frappe.session.user:
                             continue
-                        self.notify_agent(agent.name, "Reaction")
+                        self.notify_agent(agent.name, "Reaction", _("Ticket reopened"))
 
         self.remove_assignment_if_not_in_team()
         self.publish_update()
         self.capture_update_telemetry_events()
 
-    def notify_agent(self, agent, notification_type="Assignment"):
+    def notify_agent(self, agent, notification_type="Assignment", message=None):
         frappe.get_doc(
             frappe._dict(
                 doctype="HD Notification",
@@ -248,6 +251,7 @@ class HDTicket(Document):
                 reference_ticket=self.name,
                 user_to=agent,
                 notification_type=notification_type,
+                message=message,
             )
         ).insert(ignore_permissions=True)
 
@@ -482,6 +486,12 @@ class HDTicket(Document):
             if (
                 not is_agent_in_assigned_team
             ) and self.users_present_in_team_assignment_rule():
+                if current_assigned_agent != frappe.session.user:
+                    self.notify_agent(
+                        current_assigned_agent,
+                        "Reaction",
+                        _("Ticket moved to team {0}").format(self.agent_group),
+                    )
                 clear_all_assignments("HD Ticket", self.name)
 
     def agent_in_assigned_team(self, agent, team):
@@ -521,9 +531,6 @@ class HDTicket(Document):
     def assign_agent(self, agent: str):
         assign({"assign_to": [agent], "doctype": "HD Ticket", "name": self.name})
 
-        if frappe.session.user != agent:
-            self.notify_agent(agent, "Assignment")
-
     def add_tag(self, tag: str, color: str = "Gray"):
         """Tag this ticket, claiming the Tag master for helpdesk.
 
@@ -535,6 +542,12 @@ class HDTicket(Document):
         from helpdesk.api.tags import apply_tag
 
         apply_tag(self.doctype, self.name, tag, color)
+
+    def notify_customer_reply(self):
+        """Bell notice to the assigned agents on every customer reply (the reopen notice only covers some)."""
+        for agent in self.get_assigned_agents() or []:
+            if agent.name != frappe.session.user:
+                self.notify_agent(agent.name, "Reaction", _("Customer replied to the ticket"))
 
     def get_assigned_agents(self):
         assignees = get_assignees({"doctype": "HD Ticket", "name": self.name})
@@ -1089,6 +1102,7 @@ class HDTicket(Document):
                 self.status = self.default_open_status
             # if received that means customer has replied
             self.last_customer_response = frappe.utils.now_datetime()
+            self.notify_customer_reply()
         # If communication is outgoing, it must be a reply from agent
         if c.sent_or_received == "Sent":
             # Ignore system notifications

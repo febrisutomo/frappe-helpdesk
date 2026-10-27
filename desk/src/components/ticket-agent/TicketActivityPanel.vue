@@ -11,7 +11,7 @@
         v-else-if="Boolean(activities.data)"
         ref="ticketAgentActivitiesRef"
         :activities="filterActivities(tab.name as TicketTab)"
-        :title="tab.label"
+        :title="TAB_TITLES[tab.name] ?? tab.label"
         :ticket-status="ticket.doc.status"
         @email:reply="
           (e) => {
@@ -78,21 +78,29 @@ const communicationAreaRef = ref<InstanceType<typeof CommunicationArea> | null>(
 const telephonyStore = useTelephonyStore();
 const { isCallingEnabled } = storeToRefs(telephonyStore);
 
+// ActivityHeader dan TicketAgentActivities membandingkan judul dengan nama Inggris; label tab sendiri diterjemahkan
+const TAB_TITLES: Record<string, string> = {
+  activity: "Activity",
+  email: "Emails",
+  comment: "Comments",
+  call: "Calls",
+};
+
 const tabs: ComputedRef<TabObject[]> = computed(() => {
   const _tabs: TabObject[] = [
     {
       name: "activity",
-      label: "Activity",
+      label: __("Activity"),
       icon: ActivityIcon,
     },
     {
       name: "email",
-      label: "Emails",
+      label: __("Emails"),
       icon: EmailIcon,
     },
     {
       name: "comment",
-      label: "Comments",
+      label: __("Comments"),
       icon: CommentIcon,
     },
   ];
@@ -100,13 +108,13 @@ const tabs: ComputedRef<TabObject[]> = computed(() => {
   if (isCallingEnabled.value) {
     _tabs.push({
       name: "call",
-      label: "Calls",
+      label: __("Calls"),
       icon: PhoneIcon,
     });
   }
   _tabs.push({
     name: "analytics",
-    label: "Analytics",
+    label: __("Analytics"),
     icon: LucideChartNoAxesColumn,
   });
   return _tabs;

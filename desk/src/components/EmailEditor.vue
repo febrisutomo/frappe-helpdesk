@@ -473,7 +473,7 @@ const sendMail = createResource({
   debounce: 300,
 });
 
-const label = computed(() => (sendMail.loading ? "Sending..." : props.label));
+const label = computed(() => (sendMail.loading ? __("Sending...") : __(props.label)));
 
 const isDisabled = computed(
   () =>

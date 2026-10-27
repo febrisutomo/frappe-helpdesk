@@ -3,7 +3,7 @@
     class="md:mx-5 md:my-4 flex items-center justify-between text-lg-medium mx-6 !mb-0 !my-3"
   >
     <div class="flex h-8 items-center text-2xl-semibold text-ink-gray-8">
-      {{ title }}
+      {{ __(title) }}
     </div>
     <Dropdown
       v-if="title == 'Calls'"
