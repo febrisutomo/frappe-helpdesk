@@ -69,7 +69,21 @@ class HDTicket(Document):
         return self.name
 
     def before_insert(self):
+        self.reject_delivery_failure_notice()
         self.generate_key()
+
+    def reject_delivery_failure_notice(self):
+        """Do not open a ticket for a bounce (delivery failure notice) that lands in the support mailbox.
+
+        dimensy: Frappe turns every incoming mail into a ticket, so a bounce of our own acknowledgement became a
+        ticket and was acknowledged in turn. SentEmailInInboxError is the exception the mail receiver drops
+        silently (rollback, no error log, no Unhandled Email record).
+        """
+        sender = (self.get("raised_by") or "").strip().lower()
+        if not self.get("via_customer_portal") and sender.split("@")[0] in ("mailer-daemon", "postmaster"):
+            from frappe.email.receive import SentEmailInInboxError
+
+            raise SentEmailInInboxError(f"delivery failure notice from {sender}")
 
     def before_validate(self):
         self.check_update_perms()
