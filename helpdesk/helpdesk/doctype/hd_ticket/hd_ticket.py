@@ -173,7 +173,6 @@ class HDTicket(Document):
                 ),
                 reference_doctype="HD Ticket",
                 reference_name=self.name,
-                now=True,
                 in_reply_to=last_communication.name if last_communication else None,
                 email_headers={"X-Auto-Generated": "hd-email-feedback"},
             )
@@ -941,10 +940,10 @@ class HDTicket(Document):
                 ),
                 reference_doctype="HD Ticket",
                 reference_name=self.name,
-                now=True,
             )
-        except Exception as e:
-            frappe.throw(_(e))
+        except Exception:
+            # dimensy: the customer's reply is already stored; do not fail it because the notice could not be queued
+            frappe.log_error(title="Reply notice to agent could not be queued")
 
     def send_acknowledgement_email(self):
         acknowledgement_email_content = frappe.db.get_single_value(
@@ -964,14 +963,12 @@ class HDTicket(Document):
                 ),
                 reference_doctype="HD Ticket",
                 reference_name=self.name,
-                now=True,
                 expose_recipients="header",
                 email_headers={"X-Auto-Generated": "hd-acknowledgement"},
             )
-        except Exception as e:
-            frappe.throw(
-                _("Could not send an acknowledgement email due to: {0}").format(e)
-            )
+        except Exception:
+            # dimensy: the ticket (or the customer's mail) is already in; a mail problem must not undo it
+            frappe.log_error(title="Acknowledgement email could not be queued")
 
     @frappe.whitelist()
     def mark_seen(self):
