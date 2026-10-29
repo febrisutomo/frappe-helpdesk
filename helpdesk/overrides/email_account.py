@@ -9,6 +9,22 @@ from frappe.email.doctype.email_queue.email_queue import EmailQueue
 from frappe.email.receive import InboundMail
 
 
+def is_auto_reply(msg) -> bool:
+    """True for mail a mailbox sent by itself in answer to another mail (out-of-office, vacation responders).
+
+    dimensy: such a reply would reopen a ticket that waits for the customer (starting the SLA clock again) or become a ticket of its
+    own. Only responses are skipped (RFC 3834 "auto-replied", X-Autoreply, X-Autorespond, Precedence: auto_reply). Mail that is merely
+    automatic (auto-generated, bulk, web forms, monitoring from B2B clients) still becomes a ticket, because it may be a real request.
+    """
+    if (msg.get("Auto-Submitted") or "").strip().lower().startswith("auto-replied"):
+        return True
+    for name in ("X-Autoreply", "X-Autorespond"):
+        value = (msg.get(name) or "").strip().lower()
+        if value and value not in ("no", "false", "0"):
+            return True
+    return (msg.get("Precedence") or "").strip().lower() == "auto_reply"
+
+
 class CustomInboundMail(InboundMail):
     """
     Extend InboundMail with robust thread stitching for forwarded emails.
@@ -70,6 +86,15 @@ class CustomEmailAccount(EmailAccount):
 
                     # Important: If the email is auto-generated, we do not create a ticket
                     if _msg.get("X-Auto-Generated"):
+                        continue
+
+                    # dimensy: out-of-office and other automatic replies change nothing; the mail stays in the mailbox
+                    if is_auto_reply(_msg):
+                        frappe.logger("helpdesk_email").info(
+                            "auto-reply ignored: from=%s subject=%s",
+                            _msg.get("From"),
+                            _msg.get("Subject"),
+                        )
                         continue
 
                     uid = (

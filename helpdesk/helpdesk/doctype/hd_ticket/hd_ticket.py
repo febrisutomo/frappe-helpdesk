@@ -174,7 +174,11 @@ class HDTicket(Document):
                 reference_doctype="HD Ticket",
                 reference_name=self.name,
                 in_reply_to=last_communication.name if last_communication else None,
-                email_headers={"X-Auto-Generated": "hd-email-feedback"},
+                email_headers={
+                    "X-Auto-Generated": "hd-email-feedback",
+                    "Auto-Submitted": "auto-generated",
+                    "X-Auto-Response-Suppress": "All",
+                },
             )
             frappe.msgprint(_("Feedback email has been sent to the customer"))
         except Exception as e:
@@ -964,7 +968,12 @@ class HDTicket(Document):
                 reference_doctype="HD Ticket",
                 reference_name=self.name,
                 expose_recipients="header",
-                email_headers={"X-Auto-Generated": "hd-acknowledgement"},
+                # dimensy: Auto-Submitted and X-Auto-Response-Suppress keep the customer's mailbox from answering this with an out-of-office reply
+                email_headers={
+                    "X-Auto-Generated": "hd-acknowledgement",
+                    "Auto-Submitted": "auto-replied",
+                    "X-Auto-Response-Suppress": "All",
+                },
             )
         except Exception:
             # dimensy: the ticket (or the customer's mail) is already in; a mail problem must not undo it
