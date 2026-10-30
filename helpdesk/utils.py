@@ -55,12 +55,31 @@ def is_agent(user: str | None = None) -> bool:
     roles = frappe.get_roles(user)
     return (
         is_admin()
-        # dimensy: a System Manager configures Helpdesk like Administrator does; without a team or
-        # HD Agent record it still sees no tickets and gets no assignments
-        or "System Manager" in roles
+        # dimensy: the ticketing administrator opens the agent app and reads tickets (see `is_ticket_auditor`)
+        # but is on no team, so it is never assigned a ticket and gets no escalation mail
+        or TICKET_AUDITOR_ROLE in roles
         or "Agent Manager" in roles
         or "Agent" in roles
         or bool(frappe.db.exists("HD Agent", {"name": user}))
+    )
+
+
+# Dimensy: the ticketing administrator manages accounts, teams, SLAs and so on, and may read and export tickets, but never
+# works on them. Security incident tickets (type prefix below) stay with Security and the managers.
+TICKET_AUDITOR_ROLE = "Admin Ticketing"
+AUDITOR_HIDDEN_TYPE_PREFIX = "INS - "
+
+
+def is_ticket_auditor(user: str | None = None) -> bool:
+    """Whether `user` is a ticketing administrator without any agent role (read-only access to tickets)."""
+    user = user or frappe.session.user
+    if is_admin(user):
+        return False
+    roles = frappe.get_roles(user)
+    return (
+        TICKET_AUDITOR_ROLE in roles
+        and not {"Agent", "Agent Manager"} & set(roles)
+        and not frappe.db.exists("HD Agent", {"name": user})
     )
 
 
@@ -368,7 +387,7 @@ def is_agent_manager(user: str | None = None) -> bool:
     :return: Whether `user` is an agent manager, system manager or admin
     """
     roles = set(frappe.get_roles(user))
-    return bool(roles & {"Administrator", "System Manager", "Agent Manager"})
+    return bool(roles & {"Administrator", "System Manager", "Agent Manager", TICKET_AUDITOR_ROLE})
 
 
 def agent_manager_only(fn):

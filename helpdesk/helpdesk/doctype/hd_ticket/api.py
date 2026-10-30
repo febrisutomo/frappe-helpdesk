@@ -22,6 +22,7 @@ from helpdesk.utils import (
     get_customer_agent_label,
     get_customers,
     is_agent,
+    is_ticket_auditor,
     parse_call_logs,
 )
 
@@ -213,7 +214,9 @@ def get_communications(ticket: str):
 
 
 def get_comments(ticket: str):
-    if not frappe.has_permission("HD Ticket Comment", "read"):
+    # dimensy: the ticketing administrator reads the comments of the ticket it may open (get_one checked that) but has no
+    # permission on the HD Ticket Comment doctype itself, which has no per-ticket scope for generic API reads
+    if not (frappe.has_permission("HD Ticket Comment", "read") or is_ticket_auditor()):
         return []
     QBComment = frappe.qb.DocType("HD Ticket Comment")
     comments = (
@@ -346,6 +349,9 @@ def merge_ticket(source: str, target: str):
         frappe.throw(_("Target ticket does not exist"))
     if source == target:
         frappe.throw(_("Source and target ticket cannot be same"))
+    # dimensy: both tickets change, so the caller needs write permission on both (the decorator only checks "agent")
+    frappe.has_permission("HD Ticket", "write", doc=source, throw=True)
+    frappe.has_permission("HD Ticket", "write", doc=target, throw=True)
 
     controller = get_controller("HD Ticket")
 
@@ -462,6 +468,7 @@ def split_ticket(subject: str, communication_id: str):
     )
 
     ticket_id = frappe.db.get_value("Communication", communication_id, "reference_name")
+    frappe.has_permission("HD Ticket", "write", doc=ticket_id, throw=True)  # dimensy: see merge_ticket
     ticket_doc = frappe.get_doc("HD Ticket", ticket_id)
     new_ticket = duplicate_ticket(ticket_doc, subject)
 

@@ -82,6 +82,7 @@ user_invitation = {
 
 doc_events = {
     "ToDo": {
+        "validate": "helpdesk.extends.todo.validate",
         "after_insert": "helpdesk.extends.todo.after_insert",
     },
     "Assignment Rule": {

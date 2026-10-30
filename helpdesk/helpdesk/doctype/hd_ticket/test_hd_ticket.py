@@ -23,7 +23,12 @@ from helpdesk.helpdesk.doctype.hd_ticket.hd_ticket import (
     has_permission,
     permission_query,
 )
-from helpdesk.utils import INTERNAL_TICKET_FIELDS, is_agent, is_internal_ticket_field
+from helpdesk.utils import (
+    INTERNAL_TICKET_FIELDS,
+    is_agent,
+    is_internal_ticket_field,
+    is_ticket_auditor,
+)
 from helpdesk.test_utils import (
     SLA_PRIORITY_NAME,
     add_comment,
@@ -2375,17 +2380,41 @@ class TestHDTicket(FrappeTestCase):
         self.assertIsNone(sent["bcc"])
         self.assertNotIn(f'"{agent}"', json.dumps(as_customer, default=str))  # quotes: "non_agent@..." contains "agent@..."
 
-    def test_system_manager_is_agent_but_sees_no_team_tickets(self):
-        # dimensy: an admin account (System Manager only, no team, no HD Agent record) can open the agent UI
-        # but not the tickets of a team it is not in
-        admin = create_contact("Dimensy Admin", "dimensy_admin@example.com", role="System Manager")["user"]
+    def test_ticketing_administrator_reads_all_tickets_except_incidents(self):
+        # dimensy: the Admin Ticketing role opens the agent UI and reads tickets of every team, but not security incidents
+        # (type prefix "INS - "); it is no HD Agent and never works on a ticket. Role permissions (read, export, report
+        # and print only) are data, tested by scripts/test_security.py of the Dimensy project.
+        if not frappe.db.exists("Role", "Admin Ticketing"):
+            frappe.get_doc({"doctype": "Role", "role_name": "Admin Ticketing"}).insert(ignore_permissions=True)
+        admin = create_contact("Dimensy Admin", "dimensy_admin@example.com", role="Admin Ticketing")["user"]
         self.assertTrue(is_agent(admin))
+        self.assertTrue(is_ticket_auditor(admin))
         self.assertFalse(frappe.db.exists("HD Agent", admin))
         self.assertFalse(is_agent(create_contact("Plain Customer", "plain_customer@example.com")["user"]))
+        # an administrator who also holds an agent role is a plain agent, bound to the team
+        self.assertFalse(is_ticket_auditor(create_contact("Agent Admin", "agent_admin@example.com", role="Agent")["user"]))
         frappe.db.set_single_value("HD Settings", "restrict_tickets_by_agent_group", 1)
         frappe.db.set_single_value("HD Settings", "do_not_restrict_tickets_without_an_agent_group", 0)
         ticket = make_ticket(agent_group="Billing")
-        self.assertFalse(frappe.has_permission("HD Ticket", "read", ticket.name, user=admin))
+        self.assertTrue(has_permission(ticket, admin))
+        incident = make_ticket(agent_group="Billing")
+        incident.ticket_type = "INS - Uji"
+        self.assertFalse(has_permission(incident, admin))
+        query = permission_query(admin)
+        self.assertIn("NOT LIKE", query)
+        self.assertIn("INS - %", query)
+
+    def test_ticketing_administrator_cannot_comment_reply_or_assign(self):
+        # dimensy: methods that only checked "agent" now need write permission on the ticket
+        admin = create_contact("Dimensy Admin", "dimensy_admin@example.com", role="Admin Ticketing")["user"]
+        ticket = make_ticket(agent_group="Billing")
+        frappe.set_user(admin)
+        for method, args in (("new_comment", ("<p>x</p>",)), ("reply_via_agent", ("<p>x</p>",)), ("assign_agent", (agent,))):
+            with self.assertRaises(frappe.PermissionError, msg=method):
+                getattr(ticket, method)(*args)
+        with self.assertRaises(frappe.PermissionError):
+            merge_ticket(ticket.name, make_ticket(agent_group="Billing").name)
+        frappe.set_user("Administrator")
 
     def test_is_internal_ticket_field_covers_type_and_custom_fields(self):
         # dimensy: ticket type and every custom field (channel, platform, contact email) stay agent-only
