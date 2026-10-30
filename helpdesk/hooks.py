@@ -81,6 +81,13 @@ user_invitation = {
 }
 
 doc_events = {
+    "User": {"before_validate": "helpdesk.extends.auditor_guard.validate_user"},  # User.validate clears new_password
+    "HD Team": {"validate": "helpdesk.extends.auditor_guard.validate_team"},
+    "HD Agent": {"validate": "helpdesk.extends.auditor_guard.validate_agent"},
+    "HD Ticket Type": {
+        "before_rename": "helpdesk.extends.auditor_guard.before_rename_ticket_type",
+        "on_trash": "helpdesk.extends.auditor_guard.on_trash_ticket_type",
+    },
     "ToDo": {
         "validate": "helpdesk.extends.todo.validate",
         "after_insert": "helpdesk.extends.todo.after_insert",
@@ -116,6 +123,8 @@ doc_events = {
 # For List View
 permission_query_conditions = {
     "HD Ticket": "helpdesk.helpdesk.doctype.hd_ticket.hd_ticket.permission_query",
+    "HD Ticket Comment": "helpdesk.helpdesk.doctype.hd_ticket.hd_ticket.comment_permission_query",
+    "HD Ticket Activity": "helpdesk.helpdesk.doctype.hd_ticket.hd_ticket.activity_permission_query",
     "HD Saved Reply": "helpdesk.helpdesk.doctype.hd_saved_reply.hd_saved_reply.permission_query",
     "HD Customer": "helpdesk.helpdesk.doctype.hd_customer.hd_customer.permission_query",
     "HD Article": "helpdesk.helpdesk.doctype.hd_article.hd_article.permission_query",
@@ -125,6 +134,8 @@ permission_query_conditions = {
 has_permission = {
     "HD Agent": "helpdesk.helpdesk.doctype.hd_agent.hd_agent.has_permission",
     "HD Ticket": "helpdesk.helpdesk.doctype.hd_ticket.hd_ticket.has_permission",
+    "HD Ticket Comment": "helpdesk.helpdesk.doctype.hd_ticket.hd_ticket.comment_has_permission",
+    "HD Ticket Activity": "helpdesk.helpdesk.doctype.hd_ticket.hd_ticket.activity_has_permission",
     "HD Saved Reply": "helpdesk.helpdesk.doctype.hd_saved_reply.hd_saved_reply.has_permission",
     "HD Customer": "helpdesk.helpdesk.doctype.hd_customer.hd_customer.has_permission",
     "HD Article": "helpdesk.helpdesk.doctype.hd_article.hd_article.has_permission",

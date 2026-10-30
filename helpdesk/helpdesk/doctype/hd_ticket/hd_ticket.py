@@ -1482,6 +1482,38 @@ def _agent_query(user: str) -> str | None:
     return query
 
 
+def _ticket_scoped_query(doctype: str, fieldname: str):
+    """List filter for a doctype that belongs to a ticket: only rows of tickets the user may read.
+
+    dimensy: HD Ticket Comment and HD Ticket Activity carry only role permissions, so any agent could read the internal
+    comments and the history of every team's tickets (security incidents included) through the generic API.
+    """
+
+    def query(user: str | None = None):
+        scope = permission_query(user)
+        if not scope:  # unrestricted (Administrator, restrictions off)
+            return scope
+        return "`tab{dt}`.`{f}` IN (SELECT `name` FROM `tabHD Ticket` WHERE {scope})".format(dt=doctype, f=fieldname, scope=scope)
+
+    return query
+
+
+def _ticket_scoped_permission(ticket: str | None, user: str | None) -> bool:
+    return bool(ticket) and bool(frappe.has_permission("HD Ticket", "read", doc=ticket, user=user or frappe.session.user))
+
+
+comment_permission_query = _ticket_scoped_query("HD Ticket Comment", "reference_ticket")
+activity_permission_query = _ticket_scoped_query("HD Ticket Activity", "ticket")
+
+
+def comment_has_permission(doc, user=None):
+    return _ticket_scoped_permission(doc.get("reference_ticket"), user)
+
+
+def activity_has_permission(doc, user=None):
+    return _ticket_scoped_permission(doc.get("ticket"), user)
+
+
 def _get_base_visibility(user: str) -> str:
     """WHERE fragment for tickets a user is directly tied to: owner, contact, or raiser."""
 
