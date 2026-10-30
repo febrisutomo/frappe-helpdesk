@@ -29,12 +29,14 @@ from helpdesk.helpdesk.utils.email import (
     default_ticket_outgoing_email_account,
 )
 from helpdesk.utils import (
+    AUDITOR_HIDDEN_TYPE_PREFIX,
     capture_event,
     get_agents_team,
     get_customers,
     get_doc_room,
     is_admin,
     is_agent,
+    is_ticket_auditor,
     publish_event,
 )
 
@@ -546,6 +548,7 @@ class HDTicket(Document):
 
     @frappe.whitelist()
     def assign_agent(self, agent: str):
+        frappe.has_permission("HD Ticket", "write", doc=self, throw=True)
         assign({"assign_to": [agent], "doctype": "HD Ticket", "name": self.name})
 
     def add_tag(self, tag: str, color: str = "Gray"):
@@ -698,6 +701,8 @@ class HDTicket(Document):
             frappe.throw(
                 _("You are not permitted to add a comment"), frappe.PermissionError
             )
+        # dimensy: `run_doc_method` only checks read permission; commenting needs write (the ticketing administrator only reads)
+        frappe.has_permission("HD Ticket", "write", doc=self, throw=True)
         c = frappe.new_doc("HD Ticket Comment")
         c.commented_by = frappe.session.user
         c.content = content
@@ -723,6 +728,7 @@ class HDTicket(Document):
             frappe.throw(
                 _("You are not permitted to reply as an agent"), frappe.PermissionError
             )
+        frappe.has_permission("HD Ticket", "write", doc=self, throw=True)  # dimensy: see new_comment
         skip_email_workflow = self.skip_email_workflow()
         medium = "" if skip_email_workflow else "Email"
         subject = f"Re: {self.subject}"
@@ -1375,7 +1381,15 @@ def has_permission(doc, user=None):
         return True
     if not is_agent(user):
         return False
+    if is_ticket_auditor(user):
+        return _auditor_can_read(doc)
     return _agent_has_permission(doc, user)
+
+
+def _auditor_can_read(doc) -> bool:
+    """Dimensy: the ticketing administrator reads every ticket except security incidents. Writing is refused by the
+    role permissions (read, export, report and print only), not here."""
+    return not (doc.get("ticket_type") or "").startswith(AUDITOR_HIDDEN_TYPE_PREFIX)
 
 
 def _is_customer_manager(customer: str, user: str) -> bool:
@@ -1420,6 +1434,10 @@ def permission_query(user: str | None = None):
         return
     if not is_agent(user):
         return _customer_query(user)
+    if is_ticket_auditor(user):
+        return "(`tabHD Ticket`.ticket_type IS NULL OR `tabHD Ticket`.ticket_type NOT LIKE {p})".format(
+            p=frappe.db.escape(AUDITOR_HIDDEN_TYPE_PREFIX + "%")
+        )
     return _agent_query(user)
 
 
@@ -1462,6 +1480,38 @@ def _agent_query(user: str) -> str | None:
     if team_names:
         query += " OR (" + _build_in_clause("agent_group", team_names) + ")"
     return query
+
+
+def _ticket_scoped_query(doctype: str, fieldname: str):
+    """List filter for a doctype that belongs to a ticket: only rows of tickets the user may read.
+
+    dimensy: HD Ticket Comment and HD Ticket Activity carry only role permissions, so any agent could read the internal
+    comments and the history of every team's tickets (security incidents included) through the generic API.
+    """
+
+    def query(user: str | None = None):
+        scope = permission_query(user)
+        if not scope:  # unrestricted (Administrator, restrictions off)
+            return scope
+        return "`tab{dt}`.`{f}` IN (SELECT `name` FROM `tabHD Ticket` WHERE {scope})".format(dt=doctype, f=fieldname, scope=scope)
+
+    return query
+
+
+def _ticket_scoped_permission(ticket: str | None, user: str | None) -> bool:
+    return bool(ticket) and bool(frappe.has_permission("HD Ticket", "read", doc=ticket, user=user or frappe.session.user))
+
+
+comment_permission_query = _ticket_scoped_query("HD Ticket Comment", "reference_ticket")
+activity_permission_query = _ticket_scoped_query("HD Ticket Activity", "ticket")
+
+
+def comment_has_permission(doc, user=None):
+    return _ticket_scoped_permission(doc.get("reference_ticket"), user)
+
+
+def activity_has_permission(doc, user=None):
+    return _ticket_scoped_permission(doc.get("ticket"), user)
 
 
 def _get_base_visibility(user: str) -> str:

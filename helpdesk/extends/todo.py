@@ -1,4 +1,19 @@
 import frappe
+from frappe import _
+
+from helpdesk.utils import is_ticket_auditor
+
+
+def validate(doc, method=None):
+    """The ticketing administrator neither assigns tickets nor is assigned one.
+
+    `frappe.desk.form.assign_to` only asks for read permission on the ticket, which the administrator has, and creates the ToDo
+    without permission checks, so the rule is enforced here.
+    """
+    if doc.reference_type != "HD Ticket":
+        return
+    if is_ticket_auditor() or (doc.allocated_to and is_ticket_auditor(doc.allocated_to)):
+        frappe.throw(_("The ticketing administrator cannot assign tickets or be assigned one"), frappe.PermissionError)
 
 
 def after_insert(doc, method=None):
