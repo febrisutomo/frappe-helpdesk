@@ -12,8 +12,8 @@ require_type_annotated_api_methods = True
 add_to_apps_screen = [
     {
         "name": "helpdesk",
-        "logo": "/assets/helpdesk/desk/favicon.svg",
-        "title": "Helpdesk",
+        "logo": "/assets/helpdesk/desk/dimensy-icon.png",
+        "title": "Dimensy Ticketing",
         "route": "/helpdesk",
         "has_permission": "helpdesk.api.permission.has_app_permission",
     }
