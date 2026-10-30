@@ -8,6 +8,9 @@ the rule that the administrator reads tickets (except incidents) but never works
 import frappe
 from frappe import _
 
+# roles the administrator can neither grant nor take away from an account that holds one
+PROTECTED_ROLES = {"System Manager", "Agent Manager", "Administrator"}
+
 from helpdesk.utils import AUDITOR_HIDDEN_TYPE_PREFIX, is_ticket_auditor
 
 
@@ -25,6 +28,14 @@ def validate_user(doc, method=None):
         _refuse(_("The ticketing administrator cannot change its own roles"))
     if doc.get("new_password") and doc.name != me:
         _refuse(_("The ticketing administrator cannot set the password of another account; use the password reset link"))
+    now = {r.role for r in doc.get("roles") or []}
+    was = {r.role for r in before.roles} if before else set()
+    if (now ^ was) & PROTECTED_ROLES or (was & PROTECTED_ROLES and doc.name != me and (
+        now != was or doc.enabled != before.enabled or doc.user_type != before.user_type
+    )):
+        _refuse(_("The ticketing administrator cannot grant or change the manager roles or the accounts that hold them"))
+    if before and doc.user_type != before.user_type:
+        _refuse(_("The ticketing administrator cannot change the user type of an account"))
 
 
 def validate_team(doc, method=None):
