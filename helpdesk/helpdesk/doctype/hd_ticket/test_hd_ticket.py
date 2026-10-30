@@ -23,7 +23,7 @@ from helpdesk.helpdesk.doctype.hd_ticket.hd_ticket import (
     has_permission,
     permission_query,
 )
-from helpdesk.utils import INTERNAL_TICKET_FIELDS, is_internal_ticket_field
+from helpdesk.utils import INTERNAL_TICKET_FIELDS, is_agent, is_internal_ticket_field
 from helpdesk.test_utils import (
     SLA_PRIORITY_NAME,
     add_comment,
@@ -2374,6 +2374,18 @@ class TestHDTicket(FrappeTestCase):
         self.assertEqual(sent["user"]["name"], "Support Team")
         self.assertIsNone(sent["bcc"])
         self.assertNotIn(f'"{agent}"', json.dumps(as_customer, default=str))  # quotes: "non_agent@..." contains "agent@..."
+
+    def test_system_manager_is_agent_but_sees_no_team_tickets(self):
+        # dimensy: an admin account (System Manager only, no team, no HD Agent record) can open the agent UI
+        # but not the tickets of a team it is not in
+        admin = create_contact("Dimensy Admin", "dimensy_admin@example.com", role="System Manager")["user"]
+        self.assertTrue(is_agent(admin))
+        self.assertFalse(frappe.db.exists("HD Agent", admin))
+        self.assertFalse(is_agent(create_contact("Plain Customer", "plain_customer@example.com")["user"]))
+        frappe.db.set_single_value("HD Settings", "restrict_tickets_by_agent_group", 1)
+        frappe.db.set_single_value("HD Settings", "do_not_restrict_tickets_without_an_agent_group", 0)
+        ticket = make_ticket(agent_group="Billing")
+        self.assertFalse(frappe.has_permission("HD Ticket", "read", ticket.name, user=admin))
 
     def test_is_internal_ticket_field_covers_type_and_custom_fields(self):
         # dimensy: ticket type and every custom field (channel, platform, contact email) stay agent-only

@@ -52,10 +52,14 @@ def is_agent(user: str | None = None) -> bool:
     :return: Whether `user` is an agent
     """
     user = user or frappe.session.user
+    roles = frappe.get_roles(user)
     return (
         is_admin()
-        or "Agent Manager" in frappe.get_roles(user)
-        or "Agent" in frappe.get_roles(user)
+        # dimensy: a System Manager configures Helpdesk like Administrator does; without a team or
+        # HD Agent record it still sees no tickets and gets no assignments
+        or "System Manager" in roles
+        or "Agent Manager" in roles
+        or "Agent" in roles
         or bool(frappe.db.exists("HD Agent", {"name": user}))
     )
 
