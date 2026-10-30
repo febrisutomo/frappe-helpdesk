@@ -652,7 +652,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  document.title = "Helpdesk";
+  document.title = "Dimensy Ticketing";
 });
 </script>
 <style scoped>

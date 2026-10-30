@@ -57,11 +57,11 @@ export default defineConfig(async ({ mode }) => {
         },
         manifest: {
           display: "standalone",
-          name: "Frappe Helpdesk",
-          short_name: "Helpdesk",
+          name: "Dimensy Ticketing",
+          short_name: "Dimensy Ticketing",
           start_url: "/helpdesk",
           description:
-            "Modern, Streamlined, Free and Open Source Customer Service Software",
+            "Layanan tiket Dimensy Trust",
           icons: [
             {
               src: "/assets/helpdesk/desk/manifest/manifest-icon-192.maskable.png",
