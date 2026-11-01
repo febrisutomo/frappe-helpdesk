@@ -2,8 +2,9 @@
   <div
     class="flex flex-1 flex-col gap-1 overflow-hidden overflow-y-auto border-b px-6 py-3 sm:px-0 sm:py-3"
   >
+    <!-- dimensy: fields that are not visible (depends_on, hidden) were drawn anyway, e.g. "Request validated" on every ticket -->
     <TicketField
-      v-for="field in fields"
+      v-for="field in fields.filter((f) => f.visible !== false)"
       :key="field.fieldname"
       :field="field"
       :value="ticket[field.fieldname]"
