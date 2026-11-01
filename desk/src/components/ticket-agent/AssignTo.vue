@@ -194,6 +194,9 @@ import {
   toast,
 } from "frappe-ui";
 import { computed, inject, nextTick, ref, useTemplateRef, watch } from "vue";
+import { askConfirmation } from "@/composables/confirmTicketChange";
+import { leaveTicketIfAccessLost } from "@/composables/useTicket";
+import { globalStore } from "@/stores/globalStore";
 import MultipleAvatar from "../MultipleAvatar.vue";
 import UserAvatar from "../UserAvatar.vue";
 interface Props {
@@ -221,6 +224,7 @@ const emptyLabel = computed(() =>
   ticket ? __("No one") : __("Select agents")
 );
 
+const { $dialog } = globalStore();
 const { getUser } = useUserStore();
 const currentUser = computed(() => getUser("")); // empty string returns current user
 const agentStatusStore = useAgentStatusStore();
@@ -574,9 +578,39 @@ function warnUnavailableAgents(addedNames: string[]): boolean {
   return hasUnavailable;
 }
 
+// dimensy: an assignment gives the agent access to the ticket, also when the agent is not in the ticket's team
+async function agentsOutsideTeam(names: string[]): Promise<string[]> {
+  const team = ticket?.value?.doc?.agent_group;
+  if (!team || !names.length) return [];
+  const members: string[] = await createResource({
+    url: "helpdesk.helpdesk.doctype.hd_team.hd_team.get_team_members",
+    params: { team },
+  }).fetch();
+  return names.filter((name) => !members.includes(name));
+}
+
 async function saveAssignees(added: string[], removed: string[]) {
   if (!added.length && !removed.length) return;
   let hasUnavailable = false;
+
+  const outside = ticket ? await agentsOutsideTeam(added) : [];
+  if (outside.length) {
+    const labels = outside
+      .map((name) => localAssignees.value.find((a) => a.name === name)?.label || name)
+      .join(", ");
+    const confirmed = await askConfirmation($dialog, {
+      title: __("Assign agents from another team?"),
+      message: __(
+        "{0} is not in team {1} and will get access to this ticket, including its internal comments.",
+        [labels, ticket.value.doc.agent_group]
+      ),
+      label: __("Assign"),
+    });
+    if (!confirmed) {
+      localAssignees.value = [...snapshotAssignees.value];
+      return;
+    }
+  }
 
   try {
     if (removed.length) {
@@ -603,8 +637,13 @@ async function saveAssignees(added: string[], removed: string[]) {
 
     assignees?.value.reload();
     activities?.value.reload();
-  } catch {
-    toast.error(__("Failed to update Assignees."));
+    // removing yourself from a ticket of another team takes your access with it
+    if (ticket && removed.includes(currentAgentName)) {
+      leaveTicketIfAccessLost(ticket.value.name);
+    }
+  } catch (error: any) {
+    const detail = (error?.messages || []).join(", ");
+    toast.error(detail || __("Failed to update Assignees."));
     localAssignees.value = [...snapshotAssignees.value];
   }
 }

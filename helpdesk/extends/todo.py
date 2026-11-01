@@ -1,7 +1,11 @@
 import frappe
 from frappe import _
 
-from helpdesk.utils import is_ticket_auditor
+from helpdesk.utils import (
+    RESTRICTED_ASSIGNMENT_TEAMS,
+    RESTRICTED_ASSIGNMENT_TYPE_PREFIXES,
+    is_ticket_auditor,
+)
 
 
 def validate(doc, method=None):
@@ -14,6 +18,28 @@ def validate(doc, method=None):
         return
     if is_ticket_auditor() or (doc.allocated_to and is_ticket_auditor(doc.allocated_to)):
         frappe.throw(_("The ticketing administrator cannot assign tickets or be assigned one"), frappe.PermissionError)
+    _check_restricted_assignee(doc)
+
+
+def _check_restricted_assignee(doc):
+    """SRT and INS tickets go only to members of the Trusted Role teams.
+
+    The assignment (and the access it grants) is what matters, so it is checked here for every way of assigning: the agent UI,
+    `assign_to.add`, the assignment rules and server scripts. A cancelled ToDo or an unchanged assignee is not a new grant.
+    """
+    if not doc.allocated_to or doc.allocated_to == "Administrator" or doc.status == "Cancelled":
+        return
+    if not (doc.is_new() or doc.has_value_changed("allocated_to")):
+        return
+    ticket_type = frappe.db.get_value("HD Ticket", doc.reference_name, "ticket_type") or ""
+    if not ticket_type.startswith(RESTRICTED_ASSIGNMENT_TYPE_PREFIXES):
+        return
+    if frappe.db.exists("HD Team Member", {"parent": ["in", RESTRICTED_ASSIGNMENT_TEAMS], "user": doc.allocated_to}):
+        return
+    frappe.throw(
+        _("Only members of the RA Administrator, Security and Management teams can be assigned this type of ticket"),
+        frappe.PermissionError,
+    )
 
 
 def after_insert(doc, method=None):
