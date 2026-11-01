@@ -5,7 +5,10 @@
         <Breadcrumbs :items="breadcrumbs" />
       </template>
       <template #right-header>
-        <div class="absolute end-0 pe-2">
+        <div
+          class="absolute end-0 pe-2"
+          :class="{ 'pointer-events-none': isTicketAuditor }"
+        >
           <Dropdown :options="dropdownOptions">
             <template #default="{ open }">
               <Button :label="ticket.doc.status">
@@ -17,7 +20,7 @@
                     "
                   />
                 </template>
-                <template #suffix>
+                <template v-if="!isTicketAuditor" #suffix>
                   <FeatherIcon
                     :name="open ? 'chevron-up' : 'chevron-down'"
                     class="h-4"
@@ -34,7 +37,10 @@
       v-if="ticket.doc?.name"
     >
       <!-- left side -->
-      <div class="flex items-center gap-2 max-w-[65%]">
+      <div
+        class="flex items-center gap-2 max-w-[65%]"
+        :class="{ 'pointer-events-none': isTicketAuditor }"
+      >
         <Link
           class="min-w-0 flex-1"
           doctype="HD Team"
@@ -61,7 +67,7 @@
                   {{ ticket.doc.agent_group || __("Team") }}
                 </span>
               </div>
-              <template #suffix>
+              <template v-if="!isTicketAuditor" #suffix>
                 <LucideChevronDown class="h-4 w-4 ms-auto text-ink-gray-5" />
               </template>
             </Button>
@@ -72,7 +78,7 @@
       <!-- right side -->
       <div class="flex items-center gap-2">
         <CustomActions
-          v-if="mobileCustomActions.length"
+          v-if="!isTicketAuditor && mobileCustomActions.length"
           :actions="mobileCustomActions"
         />
       </div>
@@ -115,6 +121,7 @@
                   {{ __("Details") }}
                 </h3>
                 <TicketAgentFields
+                  :class="{ 'pointer-events-none': isTicketAuditor }"
                   :ticket="ticketWithFields"
                   @update="({ field, value }) => updateField(field, value)"
                   class="!border-0"
@@ -137,7 +144,9 @@
               />
             </template>
           </Tabs>
+          <!-- dimensy: the ticketing administrator neither replies nor comments -->
           <CommunicationArea
+            v-if="!isTicketAuditor"
             class="sticky bottom-0 z-50 bg-surface-base"
             ref="communicationAreaRef"
             v-model="ticket.doc"
@@ -294,6 +303,9 @@ const showPhoneModal = ref(false);
 const customActions = ref([]);
 
 type ticketId = string | number;
+
+// dimensy: the ticketing administrator reads a ticket and changes nothing
+const isTicketAuditor = Boolean(window.ticket_auditor);
 
 const props = defineProps({
   ticketId: {

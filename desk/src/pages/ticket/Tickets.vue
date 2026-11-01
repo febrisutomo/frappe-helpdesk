@@ -11,7 +11,9 @@
         />
       </template>
       <template #right-header>
+        <!-- dimensy: the ticketing administrator creates no tickets -->
         <RouterLink
+          v-if="isCustomerPortal || !isTicketAuditor"
           class="inline-flex"
           :to="{ name: isCustomerPortal ? 'TicketNew' : 'TicketAgentNew' }"
         >
@@ -92,6 +94,8 @@ import { Badge, dayjs, Tooltip, usePageMeta } from "frappe-ui";
 import { computed, h, onMounted, onUnmounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
+// dimensy: the ticketing administrator reads tickets and creates none
+const isTicketAuditor = Boolean(window.ticket_auditor);
 const router = useRouter();
 const route = useRoute();
 
