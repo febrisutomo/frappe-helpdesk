@@ -24,6 +24,16 @@ interface MapValue {
 
 const ticketMap: Record<string, MapValue> = reactive({});
 
+// dimensy: tickets the agent may be about to lose access to (after moving them to another team). Reloading such a ticket would
+// only fail with "no permission" and toast it, so reloads wait until the access check says whether the agent stays.
+const departing = new Set<string | number>();
+export const markDeparting = (ticketId: string | number) =>
+  departing.add(ticketId);
+export const unmarkDeparting = (ticketId: string | number) =>
+  departing.delete(ticketId);
+export const isDeparting = (ticketId: string | number) =>
+  departing.has(ticketId);
+
 export const useTicket = (ticketId: string | number): MapValue => {
   if (!ticketMap[ticketId]) {
     ticketMap[ticketId] = {
@@ -39,6 +49,7 @@ export const useTicket = (ticketId: string | number): MapValue => {
             leaveTicketIfAccessLost(ticketId, data?.agent_group);
           },
           onError: (error) => {
+            unmarkDeparting(ticketId);
             const msg = error.exc_type
               ? (error.messages || error.message || []).join(", ")
               : error.message;
@@ -81,29 +92,41 @@ export const useTicket = (ticketId: string | number): MapValue => {
 // dimensy: moving a ticket to another team (or to a type of another team) can take it out of the agent's reach. The page
 // keeps showing the old data and every further change would fail with "no permission", so say where the ticket went and
 // go back to the list. The creator keeps access to the ticket and stays on the page.
-export function leaveTicketIfAccessLost(
+// Resolves true when the agent lost access and was sent back to the list, false when the agent stays (then the ticket is
+// reloaded, which the change skipped while the check was pending).
+export async function leaveTicketIfAccessLost(
   ticketId: string | number,
   team?: string
-) {
-  createResource({
-    url: "frappe.client.has_permission",
-    params: { doctype: "HD Ticket", docname: ticketId, perm_type: "read" },
-    auto: true,
-    onSuccess: (res: { has_permission?: boolean }) => {
-      if (res?.has_permission) return;
-      toast.info(
-        team
-          ? __("Ticket moved to team {0}", [team])
-          : __("You no longer have access to this ticket")
-      );
-      router.push({ name: "TicketsAgent" });
-    },
-  });
+): Promise<boolean> {
+  markDeparting(ticketId);
+  let allowed = true;
+  try {
+    const res = await createResource({
+      url: "frappe.client.has_permission",
+      params: { doctype: "HD Ticket", docname: ticketId, perm_type: "read" },
+    }).fetch();
+    allowed = Boolean(res?.has_permission);
+  } catch {
+    allowed = true; // cannot tell: stay, the page shows its own errors
+  }
+  if (allowed) {
+    unmarkDeparting(ticketId);
+    reloadTicket(String(ticketId));
+    return false;
+  }
+  toast.info(
+    team
+      ? __("Ticket moved to team {0}", [team])
+      : __("You no longer have access to this ticket")
+  );
+  router.push({ name: "TicketsAgent" });
+  setTimeout(() => unmarkDeparting(ticketId), 5000);
+  return true;
 }
 
 export function reloadTicket(ticketId: string) {
   const ticketData = ticketMap[ticketId];
-  if (!ticketData) return;
+  if (!ticketData || departing.has(ticketId)) return;
   ticketData.ticket.reload();
   ticketData.assignees.reload();
   ticketData.activities.reload();

@@ -33,6 +33,7 @@
   </Tabs>
   <!-- Comm Area -->
   <CommunicationArea
+    v-if="!isTicketAuditor"
     ref="communicationAreaRef"
     :ticketId="String(ticket.doc?.name)"
     :to-emails="[ticket.doc?.raised_by]"
@@ -50,6 +51,8 @@
 
 <script setup lang="ts">
 import CommunicationArea from "@/components/CommunicationArea.vue";
+// dimensy: the ticketing administrator reads tickets, so there is no reply or comment bar
+const isTicketAuditor = Boolean(window.ticket_auditor);
 import {
   ActivityIcon,
   CommentIcon,

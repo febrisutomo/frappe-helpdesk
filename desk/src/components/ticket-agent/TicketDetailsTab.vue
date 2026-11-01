@@ -51,6 +51,7 @@
               <FieldLabel label="Assignee" />
               <div
                 class="-m-1 min-h-[28px] min-w-0 flex-1 items-center overflow-hidden p-1"
+                :class="{ 'pointer-events-none': isTicketAuditor }"
               >
                 <AssignTo hide-label ghost />
               </div>
@@ -64,7 +65,10 @@
               <FieldLabel label="Tags" class="pt-0.5" />
               <!-- 9px = the Link triggers' 8px padding + 1px border, so chips
                  and the add button start on the same column as the values -->
-              <div class="min-w-0 flex-1 py-0.5 ps-[9px]">
+              <div
+                class="min-w-0 flex-1 py-0.5 ps-[9px]"
+                :class="{ 'pointer-events-none': isTicketAuditor }"
+              >
                 <Tags
                   doctype="HD Ticket"
                   :name="ticket.doc?.name"
@@ -153,6 +157,11 @@ import { parseField } from "@/composables/formCustomisation";
 import { useNotifyTicketUpdate } from "@/composables/realtime";
 import { useShortcut } from "@/composables/shortcuts";
 import { confirmTicketChange } from "@/composables/confirmTicketChange";
+import {
+  isDeparting,
+  markDeparting,
+  unmarkDeparting,
+} from "@/composables/useTicket";
 import { globalStore } from "@/stores/globalStore";
 import { getMeta } from "@/stores/meta";
 import { useTicketStatusStore } from "@/stores/ticketStatus";
@@ -185,6 +194,8 @@ const recentSimilarTickets = inject(RecentSimilarTicketsSymbol)!;
 const { getFields, getField } = getMeta("HD Ticket");
 const { notifyTicketUpdate } = useNotifyTicketUpdate(ticket.value?.name);
 const { $dialog } = globalStore();
+// dimensy: the ticketing administrator reads tickets: every field of the panel is read only
+const isTicketAuditor = Boolean(window.ticket_auditor);
 // bumped when a change is not confirmed, so the field is drawn again with the saved value
 const revertKey = ref(0);
 
@@ -349,8 +360,8 @@ function getFieldInFormat(fieldTemplate, fieldMeta) {
     placeholder:
       fieldTemplate.placeholder ||
       __("Set {0}...", [__(fieldMeta?.label || fieldTemplate.fieldname)]),
-    readonly: Boolean(fieldMeta.read_only),
-    disabled: Boolean(fieldMeta.read_only),
+    readonly: Boolean(fieldMeta.read_only) || isTicketAuditor,
+    disabled: Boolean(fieldMeta.read_only) || isTicketAuditor,
     url_method: fieldTemplate.url_method || "",
     fieldname: fieldTemplate.fieldname,
     required: fieldTemplate.required || fieldMeta?.required || false,
@@ -378,16 +389,23 @@ async function handleFieldUpdate(
     const label = getField(fieldname)?.label || fieldname;
     notifyTicketUpdate(label, value as string);
   }
+  // dimensy: a change of team or type can take the ticket out of reach, so nothing is reloaded until that is known
+  const ticketName = ticket.value.name;
+  if (fieldname === "agent_group" || fieldname === "ticket_type") {
+    markDeparting(ticketName);
+  }
   ticket.value.setValue.submit(
     { [fieldname]: value },
     {
       onSuccess: () => {
+        if (isDeparting(ticketName)) return; // useTicket reloads it when the agent stays
         // TODO: emit the event for notification to listeners
         if (fieldname === "agent_group") {
           assignees.value.reload();
         }
         activities.value.reload();
       },
+      onError: () => unmarkDeparting(ticketName),
     }
 
     //show error toast

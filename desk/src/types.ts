@@ -807,6 +807,7 @@ declare global {
     session_user: string;
     timezone: Record<"user" | "system", string>;
     agent: string | null;
+    ticket_auditor: boolean;
     source_code_url: string;
     default_country: string;
     apps: string[];

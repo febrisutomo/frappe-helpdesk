@@ -21,14 +21,14 @@
           :hide-name="true"
         />
         <!-- Custom Actions -->
-        <div v-if="normalActions.length" class="flex gap-2">
+        <div v-if="!isTicketAuditor && normalActions.length" class="flex gap-2">
           <Button v-for="action in normalActions" v-bind="action">
             <template v-if="action.icon" #prefix>
               <FeatherIcon :name="action.icon" class="h-4 w-4" />
             </template>
           </Button>
         </div>
-        <div v-if="groupedWithLabelActions.length">
+        <div v-if="!isTicketAuditor && groupedWithLabelActions.length">
           <div v-for="g in groupedWithLabelActions" :key="g.label">
             <Dropdown v-slot="{ open }" :options="g.action">
               <Button :label="__(g.label)">
@@ -43,7 +43,7 @@
           </div>
         </div>
         <!-- Status -->
-        <Dropdown :options="statusDropdown" placement="right">
+        <Dropdown v-if="!isTicketAuditor" :options="statusDropdown" placement="right">
           <template #default="{ open }">
             <Button :label="__(ticket.doc.status)" ref="statusRef">
               <template #prefix>
@@ -56,9 +56,16 @@
             </Button>
           </template>
         </Dropdown>
+        <Button v-else :label="__(ticket.doc.status)">
+          <template #prefix>
+            <IndicatorIcon
+              :class="ticketStatusStore.getStatus(ticket.doc.status)?.parsed_color"
+            />
+          </template>
+        </Button>
         <!-- Core Actions + Custom Actions -->
         <Dropdown
-          v-if="groupedActions[0]?.items?.length >= 1"
+          v-if="!isTicketAuditor && groupedActions[0]?.items?.length >= 1"
           :options="groupedActions"
           placement="right"
         >
@@ -134,6 +141,8 @@ const route = useRoute();
 const router = useRouter();
 const { findView } = useView("HD Ticket");
 const ticketStatusStore = useTicketStatusStore();
+// dimensy: the ticketing administrator reads tickets: the status is shown, not changed, and there are no ticket actions
+const isTicketAuditor = Boolean(window.ticket_auditor);
 
 const ticket = inject(TicketSymbol)!;
 const customizations = inject(CustomizationSymbol)!;
