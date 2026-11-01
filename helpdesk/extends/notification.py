@@ -11,3 +11,12 @@ def permission_query(user: str | None = None):
     if user == "Administrator":
         return
     return "`tabHD Notification`.`user_to` = {u}".format(u=frappe.db.escape(user))
+
+
+def has_permission(doc, ptype=None, user=None):
+    """Reading, changing or deleting a notification is for its recipient; creating one for someone else (an @mention) is not limited
+    here, role permissions decide that."""
+    user = user or frappe.session.user
+    if ptype not in ("read", "write", "delete"):
+        return True
+    return user == "Administrator" or doc.get("user_to") == user

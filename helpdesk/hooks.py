@@ -136,6 +136,7 @@ has_permission = {
     "HD Agent": "helpdesk.helpdesk.doctype.hd_agent.hd_agent.has_permission",
     "HD Ticket": "helpdesk.helpdesk.doctype.hd_ticket.hd_ticket.has_permission",
     "HD Ticket Comment": "helpdesk.helpdesk.doctype.hd_ticket.hd_ticket.comment_has_permission",
+    "HD Notification": "helpdesk.extends.notification.has_permission",
     "HD Ticket Activity": "helpdesk.helpdesk.doctype.hd_ticket.hd_ticket.activity_has_permission",
     "HD Saved Reply": "helpdesk.helpdesk.doctype.hd_saved_reply.hd_saved_reply.has_permission",
     "HD Customer": "helpdesk.helpdesk.doctype.hd_customer.hd_customer.has_permission",
