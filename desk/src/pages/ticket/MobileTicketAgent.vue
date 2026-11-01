@@ -244,6 +244,7 @@ import {
   setupCustomizations,
 } from "@/composables/formCustomisation";
 import { confirmTicketChange } from "@/composables/confirmTicketChange";
+import { markDeparting, unmarkDeparting } from "@/composables/useTicket";
 import { useScreenSize } from "@/composables/screen";
 import { useActiveTabManager } from "@/composables/useActiveTabManager";
 import {
@@ -322,7 +323,13 @@ async function updateField(name: string, value: any) {
     ticket.value.reload();
     return;
   }
-  ticket.value.setValue.submit({ [name]: value });
+  if (name === "agent_group" || name === "ticket_type") {
+    markDeparting(ticket.value.name);
+  }
+  ticket.value.setValue.submit(
+    { [name]: value },
+    { onError: () => unmarkDeparting(ticket.value.name) }
+  );
 }
 
 const customizationCtx = computed(() => ({

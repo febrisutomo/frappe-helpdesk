@@ -195,7 +195,11 @@ import {
 } from "frappe-ui";
 import { computed, inject, nextTick, ref, useTemplateRef, watch } from "vue";
 import { askConfirmation } from "@/composables/confirmTicketChange";
-import { leaveTicketIfAccessLost } from "@/composables/useTicket";
+import {
+  leaveTicketIfAccessLost,
+  markDeparting,
+  unmarkDeparting,
+} from "@/composables/useTicket";
 import { globalStore } from "@/stores/globalStore";
 import MultipleAvatar from "../MultipleAvatar.vue";
 import UserAvatar from "../UserAvatar.vue";
@@ -612,22 +616,30 @@ async function saveAssignees(added: string[], removed: string[]) {
     }
   }
 
+  // dimensy: removing yourself from a ticket of another team ends your access, so everything that needs it (adding, logging)
+  // comes first and the removal is last
+  const removesSelf = Boolean(ticket) && removed.includes(currentAgentName);
+  const logParts: string[] = [];
+  if (added.length) logParts.push(`assigned ${added.join(", ")}`);
+  if (removed.length) logParts.push(`unassigned ${removed.join(", ")}`);
+
   try {
-    if (removed.length) {
-      const removeResult = await removeAssigneesResource.submit(removed);
-      if (removeResult?.exc) throw new Error(removeResult.exc);
-    }
     if (added.length) {
       hasUnavailable = warnUnavailableAgents(added);
       const addResult = await addAssigneesResource.submit(added);
       if (addResult?.exc) throw new Error(addResult.exc);
     }
+    if (removesSelf) {
+      markDeparting(ticket.value.name);
+      await logActivity(logParts.join(" & "));
+    }
+    if (removed.length) {
+      const removeResult = await removeAssigneesResource.submit(removed);
+      if (removeResult?.exc) throw new Error(removeResult.exc);
+    }
 
     // Log activity only after API calls succeed
-    const logParts: string[] = [];
-    if (added.length) logParts.push(`assigned ${added.join(", ")}`);
-    if (removed.length) logParts.push(`unassigned ${removed.join(", ")}`);
-    await logActivity(logParts.join(" & "));
+    if (!removesSelf) await logActivity(logParts.join(" & "));
 
     // Delay the success toast when warnings were shown so they land first.
     const successDelay = hasUnavailable ? 1000 : 0;
@@ -635,13 +647,14 @@ async function saveAssignees(added: string[], removed: string[]) {
       toast.success(__("Assignees updated successfully."));
     }, successDelay);
 
-    assignees?.value.reload();
-    activities?.value.reload();
-    // removing yourself from a ticket of another team takes your access with it
-    if (ticket && removed.includes(currentAgentName)) {
-      leaveTicketIfAccessLost(ticket.value.name);
+    if (removesSelf) {
+      await leaveTicketIfAccessLost(ticket.value.name); // reloads the ticket when the agent stays
+    } else {
+      assignees?.value.reload();
+      activities?.value.reload();
     }
   } catch (error: any) {
+    if (removesSelf) unmarkDeparting(ticket.value.name);
     const detail = (error?.messages || []).join(", ");
     toast.error(detail || __("Failed to update Assignees."));
     localAssignees.value = [...snapshotAssignees.value];
