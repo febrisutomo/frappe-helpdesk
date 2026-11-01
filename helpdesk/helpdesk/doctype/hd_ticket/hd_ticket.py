@@ -1405,7 +1405,16 @@ def _agent_has_permission(doc, user: str) -> bool:
     show_tickets_without_team = frappe.db.get_single_value(
         "HD Settings", "do_not_restrict_tickets_without_an_agent_group"
     )
-    if show_tickets_without_team and not doc.get("agent_group"):
+    # dimensy: judge by the team stored on the ticket. On a save the document in memory already carries the new team, so a team
+    # member who is not assigned could not move a ticket to another team ("no permission") and the check could be satisfied by
+    # naming one's own team
+    is_new = doc.is_new() if hasattr(doc, "is_new") else False
+    agent_group = (
+        doc.get("agent_group")
+        if is_new or not doc.get("name")
+        else frappe.db.get_value("HD Ticket", doc.get("name"), "agent_group")
+    )
+    if show_tickets_without_team and not agent_group:
         return True
 
     if doc.get("_assign"):
@@ -1423,7 +1432,7 @@ def _agent_has_permission(doc, user: str) -> bool:
     is_team_member = frappe.db.exists(
         "HD Team Member", {"parent": ["in", team_names], "user": user}
     )
-    return bool(is_team_member) and doc.get("agent_group") in team_names
+    return bool(is_team_member) and agent_group in team_names
 
 
 # Custom perms for list query. Only the `WHERE` part
