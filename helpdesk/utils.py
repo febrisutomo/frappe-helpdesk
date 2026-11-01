@@ -54,7 +54,8 @@ def is_agent(user: str | None = None) -> bool:
     user = user or frappe.session.user
     roles = frappe.get_roles(user)
     return (
-        is_admin()
+        # dimensy: judged for `user`, not for the session: an Administrator session (jobs, scripts) made every user an agent
+        is_admin(user)
         # dimensy: the ticketing administrator opens the agent app and reads tickets (see `is_ticket_auditor`)
         # but is on no team, so it is never assigned a ticket and gets no escalation mail
         or TICKET_AUDITOR_ROLE in roles

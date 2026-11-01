@@ -2380,21 +2380,26 @@ class TestHDTicket(FrappeTestCase):
         self.assertIsNone(sent["bcc"])
         self.assertNotIn(f'"{agent}"', json.dumps(as_customer, default=str))  # quotes: "non_agent@..." contains "agent@..."
 
+    def _ticketing_administrator(self):
+        if not frappe.db.exists("Role", "Admin Ticketing"):
+            frappe.get_doc({"doctype": "Role", "role_name": "Admin Ticketing"}).insert(ignore_permissions=True)
+        return create_contact("Dimensy Admin", "dimensy_admin@example.com", role="Admin Ticketing")["user"]
+
     def test_ticketing_administrator_reads_all_tickets_except_incidents(self):
         # dimensy: the Admin Ticketing role opens the agent UI and reads tickets of every team, but not security incidents
         # (type prefix "INS - "); it is no HD Agent and never works on a ticket. Role permissions (read, export, report
         # and print only) are data, tested by scripts/test_security.py of the Dimensy project.
-        if not frappe.db.exists("Role", "Admin Ticketing"):
-            frappe.get_doc({"doctype": "Role", "role_name": "Admin Ticketing"}).insert(ignore_permissions=True)
-        admin = create_contact("Dimensy Admin", "dimensy_admin@example.com", role="Admin Ticketing")["user"]
+        admin = self._ticketing_administrator()
         self.assertTrue(is_agent(admin))
         self.assertTrue(is_ticket_auditor(admin))
         self.assertFalse(frappe.db.exists("HD Agent", admin))
         self.assertFalse(is_agent(create_contact("Plain Customer", "plain_customer@example.com")["user"]))
         # an administrator who also holds an agent role is a plain agent, bound to the team
         self.assertFalse(is_ticket_auditor(create_contact("Agent Admin", "agent_admin@example.com", role="Agent")["user"]))
+        make_team("Billing")
         frappe.db.set_single_value("HD Settings", "restrict_tickets_by_agent_group", 1)
         frappe.db.set_single_value("HD Settings", "do_not_restrict_tickets_without_an_agent_group", 0)
+        self.addCleanup(frappe.db.set_single_value, "HD Settings", "restrict_tickets_by_agent_group", 0)
         ticket = make_ticket(agent_group="Billing")
         self.assertTrue(has_permission(ticket, admin))
         incident = make_ticket(agent_group="Billing")
@@ -2406,10 +2411,11 @@ class TestHDTicket(FrappeTestCase):
 
     def test_ticketing_administrator_cannot_comment_reply_or_assign(self):
         # dimensy: methods that only checked "agent" now need write permission on the ticket
-        admin = create_contact("Dimensy Admin", "dimensy_admin@example.com", role="Admin Ticketing")["user"]
+        admin = self._ticketing_administrator()
+        make_team("Billing")
         ticket = make_ticket(agent_group="Billing")
         frappe.set_user(admin)
-        for method, args in (("new_comment", ("<p>x</p>",)), ("reply_via_agent", ("<p>x</p>",)), ("assign_agent", (agent,))):
+        for method, args in (("new_comment", ("<p>x</p>",)), ("reply_via_agent", ("<p>x</p>",)), ("assign_agent", ("Administrator",))):
             with self.assertRaises(frappe.PermissionError, msg=method):
                 getattr(ticket, method)(*args)
         with self.assertRaises(frappe.PermissionError):
