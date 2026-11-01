@@ -6,7 +6,15 @@
     <div
       class="-m-1 min-h-[28px] flex-1 items-center overflow-hidden p-1 text-base"
     >
+      <!-- dimensy: a read only field is a plain value, not a control that looks editable (arrow, hover) -->
+      <div
+        v-if="field.readonly"
+        class="flex min-h-[28px] items-center truncate px-2 text-ink-gray-7"
+      >
+        {{ readonlyText }}
+      </div>
       <component
+        v-else
         :is="component"
         :key="field.fieldname"
         :readonly="field.readonly"
@@ -23,6 +31,7 @@
 
 <script setup lang="ts">
 import { Autocomplete } from "@/components";
+import { __ } from "@/translation";
 import FieldLabel from "@/components/FieldLabel.vue";
 import TicketPriority from "@/components/TicketPriority.vue";
 import { APIOptions, Field, FieldValue } from "@/types";
@@ -240,6 +249,12 @@ const listeners = computed(() => {
         event?.value || event?.target?.value || event
       ),
   };
+});
+
+const readonlyText = computed(() => {
+  const value = transValue.value;
+  if (props.field.fieldtype === "Check") return value ? __("Yes") : __("No");
+  return value === null || value === undefined || value === "" ? "-" : String(value);
 });
 
 const transValue = computed(() => {

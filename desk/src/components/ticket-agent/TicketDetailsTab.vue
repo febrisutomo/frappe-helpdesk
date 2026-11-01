@@ -69,7 +69,19 @@
                 class="min-w-0 flex-1 py-0.5 ps-[9px]"
                 :class="{ 'pointer-events-none': isTicketAuditor }"
               >
+                <!-- dimensy: the administrator only reads; plain chips, no add button -->
+                <div v-if="isTicketAuditor" class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="tag in auditorTags"
+                    :key="tag"
+                    class="rounded bg-surface-gray-2 px-2 py-0.5 text-sm text-ink-gray-7"
+                  >
+                    {{ tag }}
+                  </span>
+                  <span v-if="!auditorTags.length" class="text-ink-gray-5">-</span>
+                </div>
                 <Tags
+                  v-else
                   doctype="HD Ticket"
                   :name="ticket.doc?.name"
                   :tags="ticket.doc?._user_tags"
@@ -196,6 +208,12 @@ const { notifyTicketUpdate } = useNotifyTicketUpdate(ticket.value?.name);
 const { $dialog } = globalStore();
 // dimensy: the ticketing administrator reads tickets: every field of the panel is read only
 const isTicketAuditor = Boolean(window.ticket_auditor);
+const auditorTags = computed(() =>
+  String(ticket.value.doc?._user_tags || "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+);
 // bumped when a change is not confirmed, so the field is drawn again with the saved value
 const revertKey = ref(0);
 
