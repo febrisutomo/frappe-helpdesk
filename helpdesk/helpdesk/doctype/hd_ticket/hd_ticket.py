@@ -511,7 +511,8 @@ class HDTicket(Document):
                         "Reaction",
                         _("Ticket moved to team {0}").format(self.agent_group),
                     )
-                clear_all_assignments("HD Ticket", self.name)
+                # dimensy: a system step after the team changed: by now the agent who moved the ticket may no longer have access to it
+                clear_all_assignments("HD Ticket", self.name, ignore_permissions=True)
 
     def agent_in_assigned_team(self, agent, team):
         return frappe.db.exists(
