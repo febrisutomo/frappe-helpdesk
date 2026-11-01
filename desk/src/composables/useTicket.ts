@@ -36,7 +36,7 @@ export const useTicket = (ticketId: string | number): MapValue => {
         setValue: {
           onSuccess: (data: HDTicket) => {
             toast.success(__("Ticket updated successfully."));
-            leaveTicketIfAccessLost(ticketId, data);
+            leaveTicketIfAccessLost(ticketId, data?.agent_group);
           },
           onError: (error) => {
             const msg = error.exc_type
@@ -81,7 +81,10 @@ export const useTicket = (ticketId: string | number): MapValue => {
 // dimensy: moving a ticket to another team (or to a type of another team) can take it out of the agent's reach. The page
 // keeps showing the old data and every further change would fail with "no permission", so say where the ticket went and
 // go back to the list. The creator keeps access to the ticket and stays on the page.
-function leaveTicketIfAccessLost(ticketId: string | number, saved: HDTicket) {
+export function leaveTicketIfAccessLost(
+  ticketId: string | number,
+  team?: string
+) {
   createResource({
     url: "frappe.client.has_permission",
     params: { doctype: "HD Ticket", docname: ticketId, perm_type: "read" },
@@ -89,9 +92,9 @@ function leaveTicketIfAccessLost(ticketId: string | number, saved: HDTicket) {
     onSuccess: (res: { has_permission?: boolean }) => {
       if (res?.has_permission) return;
       toast.info(
-        saved?.agent_group
-          ? __("Ticket moved to team {0}", [saved.agent_group])
-          : __("Ticket moved to another team")
+        team
+          ? __("Ticket moved to team {0}", [team])
+          : __("You no longer have access to this ticket")
       );
       router.push({ name: "TicketsAgent" });
     },

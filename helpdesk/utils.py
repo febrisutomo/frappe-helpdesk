@@ -69,6 +69,11 @@ def is_agent(user: str | None = None) -> bool:
 TICKET_AUDITOR_ROLE = "Admin Ticketing"
 AUDITOR_HIDDEN_TYPE_PREFIX = "INS - "
 
+# Dimensy: certificate lifecycle (SRT) and security incident (INS) tickets are handled by Trusted Roles only, so they can be
+# assigned only to members of these teams (the ticket's own team is not enough: it may have been set by mistake)
+RESTRICTED_ASSIGNMENT_TYPE_PREFIXES = ("SRT - ", "INS - ")
+RESTRICTED_ASSIGNMENT_TEAMS = ("RA Administrator", "Security", "Management")
+
 
 def is_ticket_auditor(user: str | None = None) -> bool:
     """Whether `user` is a ticketing administrator without any agent role (read-only access to tickets)."""

@@ -116,10 +116,7 @@
                 </h3>
                 <TicketAgentFields
                   :ticket="ticketWithFields"
-                  @update="
-                    ({ field, value }) =>
-                      ticket.setValue.submit({ [field]: value })
-                  "
+                  @update="({ field, value }) => updateField(field, value)"
                   class="!border-0"
                 />
               </div>
@@ -246,6 +243,7 @@ import {
   parseField,
   setupCustomizations,
 } from "@/composables/formCustomisation";
+import { confirmTicketChange } from "@/composables/confirmTicketChange";
 import { useScreenSize } from "@/composables/screen";
 import { useActiveTabManager } from "@/composables/useActiveTabManager";
 import {
@@ -318,7 +316,12 @@ const customizations: Resource<Customizations> = createResource({
 // Build fields from getMeta + customizations (same as TicketDetailsTab)
 const { getField, getFields } = getMeta("HD Ticket");
 
-function updateField(name: string, value: string) {
+// dimensy: risky changes (team, type that moves the team, validation, Urgent) ask for a confirmation first
+async function updateField(name: string, value: any) {
+  if (!(await confirmTicketChange($dialog, ticket.value.doc, name, value))) {
+    ticket.value.reload();
+    return;
+  }
   ticket.value.setValue.submit({ [name]: value });
 }
 

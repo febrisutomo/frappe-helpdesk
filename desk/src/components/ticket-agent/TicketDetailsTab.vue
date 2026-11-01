@@ -31,20 +31,11 @@
           v-model:opened="openedSections.keyInfo"
         >
           <div class="space-y-2.5 pb-3 pt-0.5">
-            <!-- Assignee -->
-            <div class="flex items-center gap-2 leading-5">
-              <FieldLabel label="Assignee" />
-              <div
-                class="-m-1 min-h-[28px] min-w-0 flex-1 items-center overflow-hidden p-1"
-              >
-                <AssignTo hide-label ghost />
-              </div>
-            </div>
-            <!-- Core fields -->
+            <!-- Core fields: what the ticket is, how urgent, which team, then who handles it -->
             <template v-for="field in coreFields">
               <TicketField
                 v-if="field?.visible"
-                :key="field.fieldname"
+                :key="field.fieldname + '-' + revertKey"
                 :ref="(el) => setFieldRef(field.fieldname, el)"
                 :field="field"
                 :value="field.value"
@@ -54,6 +45,16 @@
                 "
               />
             </template>
+
+            <!-- Assignee -->
+            <div class="flex items-center gap-2 leading-5">
+              <FieldLabel label="Assignee" />
+              <div
+                class="-m-1 min-h-[28px] min-w-0 flex-1 items-center overflow-hidden p-1"
+              >
+                <AssignTo hide-label ghost />
+              </div>
+            </div>
 
             <!-- Tags -->
             <!-- pt-0.5: chips are 24px vs the 20px avatars/text above, so they
@@ -151,6 +152,8 @@
 import { parseField } from "@/composables/formCustomisation";
 import { useNotifyTicketUpdate } from "@/composables/realtime";
 import { useShortcut } from "@/composables/shortcuts";
+import { confirmTicketChange } from "@/composables/confirmTicketChange";
+import { globalStore } from "@/stores/globalStore";
 import { getMeta } from "@/stores/meta";
 import { useTicketStatusStore } from "@/stores/ticketStatus";
 import { __ } from "@/translation.ts";
@@ -181,13 +184,23 @@ const activities = inject(ActivitiesSymbol)!;
 const recentSimilarTickets = inject(RecentSimilarTicketsSymbol)!;
 const { getFields, getField } = getMeta("HD Ticket");
 const { notifyTicketUpdate } = useNotifyTicketUpdate(ticket.value?.name);
+const { $dialog } = globalStore();
+// bumped when a change is not confirmed, so the field is drawn again with the saved value
+const revertKey = ref(0);
 
 const dateFormat = window.date_format;
 const { getStatus, colorMap } = useTicketStatusStore();
 
-// dimensy: Overview is about handling the ticket (what, where, how urgent, which team). The reporter side
-// (contact, customer, channel) stays in More Details; Customer only applies to B2B, so it is shown there when set.
-const CORE_FIELDS = ["ticket_type", "custom_platform", "priority", "agent_group"];
+// dimensy: Overview is about handling the ticket, in the order it is triaged: Platform, then the type that sets the priority
+// and the team, then the Assignee below the team. "Request validated" only shows on revocation tickets (its depends_on).
+// The reporter side (contact, customer, channel) stays in More Details; Customer only applies to B2B, so it is shown there when set.
+const CORE_FIELDS = [
+  "custom_platform",
+  "ticket_type",
+  "priority",
+  "agent_group",
+  "custom_revocation_validated",
+];
 
 const coreFields = computed(() => {
   const fieldsMeta = getFields();
@@ -201,7 +214,7 @@ const coreFields = computed(() => {
     // cant handle required depends on as we directly set the value in DB on change
     field["required"] = field.reqd;
     const formatted = getFieldInFormat(field, field);
-    formatted["visible"] = true;
+    if (fieldname !== "custom_revocation_validated") formatted["visible"] = true;
     return formatted;
   }).filter(Boolean);
 });
@@ -351,12 +364,16 @@ function getFieldInFormat(fieldTemplate, fieldMeta) {
 const normalize = (v: string | FieldValue) =>
   v === null || v === undefined ? "" : v;
 
-function handleFieldUpdate(
+async function handleFieldUpdate(
   fieldname: string,
   value: FieldValue,
   isCoreFieldUpdated = false
 ) {
   if (normalize(ticket.value.doc[fieldname]) == normalize(value)) return;
+  if (!(await confirmTicketChange($dialog, ticket.value.doc, fieldname, value))) {
+    revertKey.value++;
+    return;
+  }
   if (isCoreFieldUpdated) {
     const label = getField(fieldname)?.label || fieldname;
     notifyTicketUpdate(label, value as string);
