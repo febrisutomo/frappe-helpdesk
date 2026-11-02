@@ -201,6 +201,63 @@ def _is_plain_value(value) -> bool:
     return not (name and (name in INTERNAL_TICKET_FIELDS or name.startswith("custom_")))
 
 
+def _called_method(path: str, form) -> str:
+    """The dotted name of the whitelisted method a request calls (`/api/method/<name>`, `/api/v2/method/<name>` or `cmd`)."""
+    path = unquote(path or "").rstrip("/")
+    for prefix in ("/api/method/", "/api/v2/method/"):
+        if path.startswith(prefix):
+            return path[len(prefix) :].split("/")[0]
+    return str(form.get("cmd") or "")
+
+
+def _method_target(form) -> tuple[str, str]:
+    """Doctype and name a form-style call acts on, given directly or inside `args` / `doc`."""
+    values = {"doctype": form.get("doctype"), "name": form.get("name")}
+    for key in ("args", "doc"):
+        raw = form.get(key)
+        parsed = frappe.parse_json(raw) if isinstance(raw, str) and raw.strip()[:1] == "{" else raw
+        if isinstance(parsed, dict):
+            values["doctype"] = values["doctype"] or parsed.get("doctype")
+            values["name"] = values["name"] or parsed.get("name")
+    return str(values["doctype"] or ""), str(values["name"] or "")
+
+
+# dimensy: the generic document-form methods bundle what the field permissions do not cover (assignees, field history, internal
+# logs) or change assignments with only read permission; the portal and the agent app do not use them for tickets
+_TICKET_FORM_LOADERS = {
+    "frappe.desk.form.load.getdoc",
+    "frappe.desk.form.load.get_docinfo",
+    "frappe.desk.form.load.get_communications",
+}
+_ASSIGNMENT_METHODS = {
+    "frappe.desk.form.assign_to.add",
+    "frappe.desk.form.assign_to.add_multiple",
+    "frappe.desk.form.assign_to.remove",
+    "frappe.desk.form.assign_to.remove_multiple",
+}
+
+
+def _guard_generic_ticket_methods(user: str, path: str, form):
+    method = _called_method(path, form)
+    if method not in _TICKET_FORM_LOADERS and method not in _ASSIGNMENT_METHODS:
+        return
+    doctype, name = _method_target(form)
+    if doctype.strip().lower() != "hd ticket":
+        return
+    if method in _TICKET_FORM_LOADERS:
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+    # assign_to only asks for read permission: an assignment grants access and rings bells, so it needs write permission
+    if user in ("Administrator", "Guest"):
+        return
+    names = frappe.parse_json(name) if name.strip()[:1] == "[" else [name]  # bulk assignment sends a list of tickets
+    if (
+        not is_agent(user)
+        or not names
+        or not all(isinstance(n, str) and frappe.has_permission("HD Ticket", "write", n, user=user) for n in names)
+    ):
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+
 def restrict_internal_ticket_access():
     """`before_request` hook: customers cannot ask the generic Frappe API for internal ticket data.
 
@@ -209,17 +266,14 @@ def restrict_internal_ticket_access():
     internal fields from `fields`/`fieldname` and refuses filters, ordering and grouping on them.
     """
     user = frappe.session.user
-    if user in ("Administrator", "Guest") or not getattr(frappe.local, "request", None) or is_agent(user):
+    if not getattr(frappe.local, "request", None):
         return
     form = frappe.local.form_dict
     path = frappe.local.request.path or ""
+    _guard_generic_ticket_methods(user, path, form)
+    if user in ("Administrator", "Guest") or is_agent(user):
+        return
     doctype = form.get("doctype")
-    # dimensy: the generic form loaders bundle the assignees, the field history and the internal logs of a document, which the
-    # field permissions above do not cover; the portal and the agent app never call them for tickets
-    if path.rsplit("/", 1)[-1] in ("getdoc", "get_docinfo", "get_communications") and str(
-        form.get("doctype") or ""
-    ).strip().lower() == "hd ticket":
-        frappe.throw(_("Not permitted"), frappe.PermissionError)
     for prefix in ("/api/resource/", "/api/v2/document/", "/api/v2/doctype/"):  # REST v1 and v2 name the doctype in the path
         if path.startswith(prefix):
             doctype = unquote(path[len(prefix) :].split("/")[0])

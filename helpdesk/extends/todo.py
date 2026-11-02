@@ -23,6 +23,13 @@ def validate(doc, method=None):
     _check_restricted_assignee(doc)
 
 
+def _is_new_grant(doc) -> bool:
+    """A new ToDo, or one that now points at another assignee or ticket, or comes back from Cancelled or Closed."""
+    return doc.is_new() or any(
+        doc.has_value_changed(field) for field in ("allocated_to", "reference_type", "reference_name", "status")
+    )
+
+
 def _check_direct_assignment(doc):
     """A ToDo made through the generic API (`/api/resource/ToDo`) is an assignment, and an assignment grants access to the ticket.
 
@@ -32,7 +39,7 @@ def _check_direct_assignment(doc):
     """
     if doc.flags.ignore_permissions or frappe.session.user == "Administrator":
         return
-    if not (doc.is_new() or doc.has_value_changed("allocated_to") or doc.has_value_changed("reference_name")):
+    if not _is_new_grant(doc):
         return
     user = frappe.session.user
     if not is_agent(user) or not frappe.has_permission("HD Ticket", "write", doc.reference_name, user=user):
@@ -47,7 +54,7 @@ def _check_restricted_assignee(doc):
     """
     if not doc.allocated_to or doc.allocated_to == "Administrator" or doc.status == "Cancelled":
         return
-    if not (doc.is_new() or doc.has_value_changed("allocated_to")):
+    if not _is_new_grant(doc):
         return
     ticket_type = frappe.db.get_value("HD Ticket", doc.reference_name, "ticket_type") or ""
     if not ticket_type.startswith(RESTRICTED_ASSIGNMENT_TYPE_PREFIXES):
