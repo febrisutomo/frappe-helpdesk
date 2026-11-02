@@ -4,6 +4,7 @@ from frappe import _
 from helpdesk.utils import (
     RESTRICTED_ASSIGNMENT_TEAMS,
     RESTRICTED_ASSIGNMENT_TYPE_PREFIXES,
+    is_agent,
     is_ticket_auditor,
 )
 
@@ -16,9 +17,26 @@ def validate(doc, method=None):
     """
     if doc.reference_type != "HD Ticket":
         return
+    _check_direct_assignment(doc)
     if is_ticket_auditor() or (doc.allocated_to and is_ticket_auditor(doc.allocated_to)):
         frappe.throw(_("The ticketing administrator cannot assign tickets or be assigned one"), frappe.PermissionError)
     _check_restricted_assignee(doc)
+
+
+def _check_direct_assignment(doc):
+    """A ToDo made through the generic API (`/api/resource/ToDo`) is an assignment, and an assignment grants access to the ticket.
+
+    `assign_to` and the assignment rules insert with ignore_permissions, so only a direct insert or edit reaches this check:
+    it needs an agent who may already change the ticket, otherwise a customer or an agent of another team could give anyone,
+    themselves included, a ticket they cannot reach.
+    """
+    if doc.flags.ignore_permissions or frappe.session.user == "Administrator":
+        return
+    if not (doc.is_new() or doc.has_value_changed("allocated_to") or doc.has_value_changed("reference_name")):
+        return
+    user = frappe.session.user
+    if not is_agent(user) or not frappe.has_permission("HD Ticket", "write", doc.reference_name, user=user):
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
 
 
 def _check_restricted_assignee(doc):

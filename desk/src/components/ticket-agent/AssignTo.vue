@@ -49,7 +49,7 @@
               </span>
             </template>
           </div>
-          <template #suffix>
+          <template v-if="!readonly" #suffix>
             <LucideChevronDown
               class="ms-auto size-4 shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
               :class="[
@@ -206,11 +206,13 @@ import UserAvatar from "../UserAvatar.vue";
 interface Props {
   hideLabel?: boolean;
   ghost?: boolean;
+  readonly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   hideLabel: false,
   ghost: false,
+  readonly: false, // dimensy: the read-only ticketing administrator gets no chevron on a control that does nothing
 });
 
 const { hideLabel, ghost } = props;

@@ -73,7 +73,11 @@
             </Button>
           </template>
         </Link>
-        <AssignTo class="min-w-0 flex-1" :hide-label="true" />
+        <AssignTo
+          class="min-w-0 flex-1"
+          :hide-label="true"
+          :readonly="isTicketAuditor"
+        />
       </div>
       <!-- right side -->
       <div class="flex items-center gap-2">
