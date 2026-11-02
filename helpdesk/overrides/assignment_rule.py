@@ -84,7 +84,9 @@ class HelpdeskAssignmentRule(AssignmentRule):
             frappe.get_doc(
                 {
                     "doctype": "HD Notification",
-                    "user_from": frappe.session.user,
+                    # dimensy: the rule runs in the session of whoever made the ticket, here a customer, who must not appear
+                    # as the one who assigned it
+                    "user_from": "Administrator",
                     "user_to": self.last_user,
                     "reference_ticket": doc.get("name"),
                     "notification_type": "Assignment",
