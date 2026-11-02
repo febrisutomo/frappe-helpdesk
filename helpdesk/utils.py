@@ -210,16 +210,27 @@ def _called_method(path: str, form) -> str:
     return str(form.get("cmd") or "")
 
 
-def _method_target(form) -> tuple[str, str]:
-    """Doctype and name a form-style call acts on, given directly or inside `args` / `doc`."""
-    values = {"doctype": form.get("doctype"), "name": form.get("name")}
+def _method_targets(form) -> list[tuple[str, list[str]]]:
+    """Every (doctype, names) pair a form-style call could mean: the top level, `args` and `doc`.
+
+    The handlers read `args` when it is present and the top level otherwise, so the guard looks at all of them rather than
+    guess which one wins; a ticket named in any of them is a ticket the call may act on.
+    """
+    sources = [form]
     for key in ("args", "doc"):
         raw = form.get(key)
         parsed = frappe.parse_json(raw) if isinstance(raw, str) and raw.strip()[:1] == "{" else raw
         if isinstance(parsed, dict):
-            values["doctype"] = values["doctype"] or parsed.get("doctype")
-            values["name"] = values["name"] or parsed.get("name")
-    return str(values["doctype"] or ""), str(values["name"] or "")
+            sources.append(parsed)
+    targets = []
+    for src in sources:
+        names = []
+        for key in ("name", "names"):
+            value = src.get(key)
+            parsed = frappe.parse_json(value) if isinstance(value, str) and value.strip()[:1] == "[" else value
+            names += parsed if isinstance(parsed, list) else [parsed]
+        targets.append((str(src.get("doctype") or ""), [str(n) for n in names if n]))
+    return targets
 
 
 # dimensy: the generic document-form methods bundle what the field permissions do not cover (assignees, field history, internal
@@ -241,19 +252,19 @@ def _guard_generic_ticket_methods(user: str, path: str, form):
     method = _called_method(path, form)
     if method not in _TICKET_FORM_LOADERS and method not in _ASSIGNMENT_METHODS:
         return
-    doctype, name = _method_target(form)
-    if doctype.strip().lower() != "hd ticket":
+    tickets = [names for doctype, names in _method_targets(form) if doctype.strip().lower() == "hd ticket"]
+    if not tickets:
         return
     if method in _TICKET_FORM_LOADERS:
         frappe.throw(_("Not permitted"), frappe.PermissionError)
     # assign_to only asks for read permission: an assignment grants access and rings bells, so it needs write permission
     if user in ("Administrator", "Guest"):
         return
-    names = frappe.parse_json(name) if name.strip()[:1] == "[" else [name]  # bulk assignment sends a list of tickets
+    names = [n for group in _method_targets(form) for n in group[1]]  # every name given, whichever doctype it is filed under
     if (
         not is_agent(user)
         or not names
-        or not all(isinstance(n, str) and frappe.has_permission("HD Ticket", "write", n, user=user) for n in names)
+        or not all(frappe.has_permission("HD Ticket", "write", n, user=user) for n in names)
     ):
         frappe.throw(_("Not permitted"), frappe.PermissionError)
 
