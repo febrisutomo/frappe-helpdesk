@@ -214,6 +214,12 @@ def restrict_internal_ticket_access():
     form = frappe.local.form_dict
     path = frappe.local.request.path or ""
     doctype = form.get("doctype")
+    # dimensy: the generic form loaders bundle the assignees, the field history and the internal logs of a document, which the
+    # field permissions above do not cover; the portal and the agent app never call them for tickets
+    if path.rsplit("/", 1)[-1] in ("getdoc", "get_docinfo", "get_communications") and str(
+        form.get("doctype") or ""
+    ).strip().lower() == "hd ticket":
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
     for prefix in ("/api/resource/", "/api/v2/document/", "/api/v2/doctype/"):  # REST v1 and v2 name the doctype in the path
         if path.startswith(prefix):
             doctype = unquote(path[len(prefix) :].split("/")[0])
