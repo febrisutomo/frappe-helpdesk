@@ -104,6 +104,29 @@ class HDTicket(Document):
 
     def validate(self):
         self.validate_feedback()
+        self.validate_relay_creator()
+
+    def validate_relay_creator(self):
+        """dimensy: an agent who made the ticket but no longer has standing on it (it moved to another team and the agent was
+        released) may only change its status, to mark the answer as delivered on WhatsApp or the phone (SOP-2). The other
+        content belongs to the team that holds the ticket; without this the agent could change the type back and take it home."""
+        user = frappe.session.user
+        before = None if self.is_new() else self.get_doc_before_save()
+        if (
+            not before
+            or user == "Administrator"
+            or user != before.owner
+            or is_admin(user)
+            or not is_agent(user)
+            or _agent_has_permission(before, user)
+        ):
+            return
+        locked = [f for f in RELAY_LOCKED_FIELDS if self.has_value_changed(f)]
+        if locked:
+            frappe.throw(
+                _("Only the status of this ticket can be changed now that it is with another team"),
+                frappe.PermissionError,
+            )
 
     def before_save(self):
         self.set_resolution_date()
@@ -1368,6 +1391,23 @@ class HDTicket(Document):
                 fields.remove(f)
         return fields
 
+
+# dimensy: content fields a relaying agent may not change once the ticket is with another team (see validate_relay_creator)
+RELAY_LOCKED_FIELDS = (
+    "ticket_type",
+    "priority",
+    "agent_group",
+    "subject",
+    "description",
+    "contact",
+    "customer",
+    "raised_by",
+    "custom_platform",
+    "custom_channel",
+    "custom_reporter_email",
+    "custom_reporter_phone",
+    "custom_revocation_validated",
+)
 
 # Check if `user` has access to this specific ticket (`doc`). This implements extra
 # permission checks which is not possible with standard permission system. This function
