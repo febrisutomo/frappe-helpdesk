@@ -88,7 +88,41 @@ class HDTicket(Document):
         if self.get("email_account") and not self.get("via_customer_portal"):
             from frappe.email.receive import SentEmailInInboxError
 
+            self.send_after_hours_notice()
             raise SentEmailInInboxError("first email is recorded by Customer Service")
+
+    def send_after_hours_notice(self):
+        """Tell the sender of a first email, received outside working hours, when Customer Service will answer (procedure 6.1 b).
+
+        The notice is sent at once (`now=True`) because the transaction is rolled back right after this, which would drop a queued
+        mail. A sender gets it once a day, kept in the cache (not the database, for the same reason), and automatic senders get none.
+        """
+        sender = (self.get("raised_by") or "").strip().lower()
+        local = sender.split("@")[0]
+        own = (frappe.db.get_value("Email Account", self.email_account, "email_id") or "").lower()
+        if not sender or sender == own or local in ("noreply", "no-reply", "donotreply", "do-not-reply", "mailer-daemon", "postmaster"):
+            return
+        try:
+            if not self.is_currently_outside_working_hours():
+                return
+            key = f"hd_after_hours_notice:{sender}"
+            template = frappe.db.get_value("Email Template", AFTER_HOURS_TEMPLATE, ["subject", "response_html"], as_dict=True)
+            if not template or frappe.cache.get_value(key):
+                return
+            frappe.cache.set_value(key, 1, expires_in_sec=24 * 3600)
+            frappe.sendmail(
+                recipients=[sender],
+                subject=template.subject,
+                message=template.response_html,
+                now=True,
+                email_headers={
+                    "X-Auto-Generated": "hd-after-hours-notice",
+                    "Auto-Submitted": "auto-replied",
+                    "X-Auto-Response-Suppress": "All",
+                },
+            )
+        except Exception:
+            frappe.log_error(title="After-hours notice could not be sent")
 
     def reject_delivery_failure_notice(self):
         """Do not open a ticket for a bounce (delivery failure notice) that lands in the support mailbox.
@@ -141,6 +175,9 @@ class HDTicket(Document):
         ):
             return
         locked = [f for f in RELAY_LOCKED_FIELDS if self.has_value_changed(f)]
+        if _in_team(user, REPLY_TEAM) and self.has_value_changed("ticket_type"):
+            # Customer Service sorts the ticket and corrects a wrong type (procedure 6.3.4, 6.4.8); priority and team follow the type
+            locked = [f for f in locked if f not in ("ticket_type", "priority", "agent_group")]
         if locked:
             frappe.throw(
                 _("Only the status of this ticket can be changed now that it is with another team"),
@@ -247,10 +284,13 @@ class HDTicket(Document):
         send_ack_email = frappe.db.get_single_value(
             "HD Settings", "send_acknowledgement_email"
         )
+        # dimensy: a ticket from the portal is acknowledged by email too (procedure 6.2.1); the text tells the reporter the working hours
+        # when the ticket arrives outside them (`raised_outside_working_hours` is read by the template). A ticket Customer Service
+        # records for a reporter without email keeps the agent as raiser and gets no acknowledgement.
         if (
-            not self.via_customer_portal
-            and not frappe.flags.initial_sync
+            not frappe.flags.initial_sync
             and send_ack_email
+            and not frappe.db.exists("HD Agent", {"name": self.raised_by})
         ):
             self.send_acknowledgement_email()
 
@@ -1415,6 +1455,9 @@ class HDTicket(Document):
                 fields.remove(f)
         return fields
 
+
+# dimensy: Email Template (made by the project) sent to the sender of a first email received outside working hours
+AFTER_HOURS_TEMPLATE = "Balasan Otomatis Luar Jam Kerja"
 
 # dimensy: content fields a relaying agent may not change once the ticket is with another team (see validate_relay_creator)
 RELAY_LOCKED_FIELDS = (
