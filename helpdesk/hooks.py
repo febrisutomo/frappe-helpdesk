@@ -118,6 +118,7 @@ doc_events = {
     "Notification Log": {
         "before_insert": "helpdesk.extends.notification_log.before_insert",
     },
+    "Communication": {"before_insert": "helpdesk.extends.communication.before_insert"},
 }
 
 # For List View

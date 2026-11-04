@@ -70,10 +70,40 @@ def is_agent(user: str | None = None) -> bool:
 TICKET_AUDITOR_ROLE = "Admin Ticketing"
 AUDITOR_HIDDEN_TYPE_PREFIX = "INS - "
 
+# Dimensy: the Manajer PSrE only monitors. The role is held on top of Agent Manager (dashboards, escalation mail); it reads every
+# ticket, security incidents included, and refuses any other permission on tickets, their comments and their replies.
+TICKET_MONITOR_ROLE = "Ticket Monitor"
+MONITOR_ALLOWED_PTYPES = ("read", "select", "export", "report", "print")
+# Dimensy: the reporter hears from Customer Service only; RA Administrator also writes to the applicant of a revocation (authentication)
+REPLY_TEAM = "Customer Service"
+REPLY_EXCEPTION_TEAM = "RA Administrator"
+REPLY_EXCEPTION_TYPE_PREFIX = "SRT - Pencabutan"
+
+
+def is_ticket_monitor(user: str | None = None) -> bool:
+    user = user or frappe.session.user
+    return user != "Administrator" and TICKET_MONITOR_ROLE in frappe.get_roles(user)
+
+
+def monitor_denies(ptype: str | None, user: str | None = None) -> bool:
+    """Whether `user` is a monitor and `ptype` is more than reading."""
+    return bool(ptype) and ptype not in MONITOR_ALLOWED_PTYPES and is_ticket_monitor(user)
+
+
+def can_reply_to_reporter(ticket_type: str | None, user: str | None = None) -> bool:
+    """One door: only Customer Service (and RA Administrator on revocation tickets) writes to the reporter."""
+    user = user or frappe.session.user
+    if user == "Administrator":
+        return True
+    teams = [REPLY_TEAM]
+    if (ticket_type or "").startswith(REPLY_EXCEPTION_TYPE_PREFIX):
+        teams.append(REPLY_EXCEPTION_TEAM)
+    return bool(frappe.db.exists("HD Team Member", {"parent": ["in", teams], "user": user}))
+
 # Dimensy: certificate lifecycle (SRT) and security incident (INS) tickets are handled by Trusted Roles only, so they can be
 # assigned only to members of these teams (the ticket's own team is not enough: it may have been set by mistake)
 RESTRICTED_ASSIGNMENT_TYPE_PREFIXES = ("SRT - ", "INS - ")
-RESTRICTED_ASSIGNMENT_TEAMS = ("RA Administrator", "Security", "Management")
+RESTRICTED_ASSIGNMENT_TEAMS = ("RA Administrator", "Security", "Technical Support", "Developer")
 
 
 def is_ticket_auditor(user: str | None = None) -> bool:
