@@ -176,8 +176,11 @@ class HDTicket(Document):
             return
         locked = [f for f in RELAY_LOCKED_FIELDS if self.has_value_changed(f)]
         if _in_team(user, REPLY_TEAM) and self.has_value_changed("ticket_type"):
-            # Customer Service sorts the ticket and corrects a wrong type (procedure 6.3.4, 6.4.8); priority and team follow the type
-            locked = [f for f in locked if f not in ("ticket_type", "priority", "agent_group")]
+            # Customer Service sorts the ticket and corrects a wrong type (procedure 6.3.4, 6.4.8). Priority and team may change only
+            # to what the new type implies, so the type cannot be a way to set them freely
+            defaults = frappe.db.get_value("HD Ticket Type", self.ticket_type, ["priority", "custom_team"], as_dict=True) or {}
+            follows = {"priority": defaults.get("priority"), "agent_group": defaults.get("custom_team")}
+            locked = [f for f in locked if f != "ticket_type" and not (f in follows and follows[f] and self.get(f) == follows[f])]
         if locked:
             frappe.throw(
                 _("Only the status of this ticket can be changed now that it is with another team"),
