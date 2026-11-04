@@ -73,7 +73,21 @@ class HDTicket(Document):
 
     def before_insert(self):
         self.reject_delivery_failure_notice()
+        self.reject_first_email()
         self.generate_key()
+
+    def reject_first_email(self):
+        """The first email to the support address is not opened as a ticket: Customer Service records it (procedure 6.2).
+
+        dimensy: a reply to a ticket is threaded onto that ticket (by In-Reply-To or the ticket number in the subject) before a
+        ticket is made, so only an email that starts a conversation reaches this point. The mail receiver drops it silently
+        (rollback, no Communication kept) and it stays in the mailbox for Customer Service. A ticket from the portal or made by an
+        agent has no inbound Email Account.
+        """
+        if self.get("email_account") and not self.get("via_customer_portal"):
+            from frappe.email.receive import SentEmailInInboxError
+
+            raise SentEmailInInboxError("first email is recorded by Customer Service")
 
     def reject_delivery_failure_notice(self):
         """Do not open a ticket for a bounce (delivery failure notice) that lands in the support mailbox.
