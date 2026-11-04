@@ -32,7 +32,7 @@ function moveConfirmation(team: string, incident: boolean): Confirmation {
   ];
   if (incident) {
     lines.push(
-      __("A security incident ticket alerts the Security team and its on-call contact.")
+      __("A security incident ticket alerts the Security team.")
     );
   }
   return {
@@ -70,7 +70,7 @@ export async function confirmationFor(
     return {
       title: __("Raise the priority to Urgent?"),
       message: __(
-        "The team, the managers and the on-call contact are alerted by email, and the ticket follows the 24/7 SLA."
+        "The team and the managers are alerted early by email, and the ticket follows the Urgent SLA."
       ),
       label: __("Set to Urgent"),
     };
