@@ -37,6 +37,7 @@ from helpdesk.utils import (
     is_admin,
     is_agent,
     is_ticket_auditor,
+    monitor_denies,
     publish_event,
 )
 
@@ -1412,8 +1413,10 @@ RELAY_LOCKED_FIELDS = (
 # Check if `user` has access to this specific ticket (`doc`). This implements extra
 # permission checks which is not possible with standard permission system. This function
 # is being called from hooks. `doc` is the ticket to check against
-def has_permission(doc, user=None):
+def has_permission(doc, ptype=None, user=None):
     user = user or frappe.session.user
+    if monitor_denies(ptype, user):  # dimensy: the Manajer PSrE reads, nothing else
+        return False
     if is_admin(user):
         return True
     if user in (doc.contact, doc.raised_by, doc.owner):
@@ -1556,11 +1559,15 @@ comment_permission_query = _ticket_scoped_query("HD Ticket Comment", "reference_
 activity_permission_query = _ticket_scoped_query("HD Ticket Activity", "ticket")
 
 
-def comment_has_permission(doc, user=None):
+def comment_has_permission(doc, ptype=None, user=None):
+    if monitor_denies(ptype, user):
+        return False
     return _ticket_scoped_permission(doc.get("reference_ticket"), user)
 
 
-def activity_has_permission(doc, user=None):
+def activity_has_permission(doc, ptype=None, user=None):
+    if monitor_denies(ptype, user):
+        return False
     return _ticket_scoped_permission(doc.get("ticket"), user)
 
 

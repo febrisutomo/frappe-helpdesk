@@ -6,6 +6,7 @@ from helpdesk.utils import (
     RESTRICTED_ASSIGNMENT_TYPE_PREFIXES,
     is_agent,
     is_ticket_auditor,
+    is_ticket_monitor,
 )
 
 
@@ -18,8 +19,9 @@ def validate(doc, method=None):
     if doc.reference_type != "HD Ticket":
         return
     _check_direct_assignment(doc)
-    if is_ticket_auditor() or (doc.allocated_to and is_ticket_auditor(doc.allocated_to)):
-        frappe.throw(_("The ticketing administrator cannot assign tickets or be assigned one"), frappe.PermissionError)
+    people = [None] + ([doc.allocated_to] if doc.allocated_to else [])  # None: the session user
+    if any(check(person) for check in (is_ticket_auditor, is_ticket_monitor) for person in people):
+        frappe.throw(_("The ticketing administrator and the monitor cannot assign tickets or be assigned one"), frappe.PermissionError)
     _check_restricted_assignee(doc)
 
 
@@ -62,7 +64,7 @@ def _check_restricted_assignee(doc):
     if frappe.db.exists("HD Team Member", {"parent": ["in", RESTRICTED_ASSIGNMENT_TEAMS], "user": doc.allocated_to}):
         return
     frappe.throw(
-        _("Only members of the RA Administrator, Security and Management teams can be assigned this type of ticket"),
+        _("Only members of the RA Administrator, Security, Technical Support and Developer teams can be assigned this type of ticket"),
         frappe.PermissionError,
     )
 
