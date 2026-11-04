@@ -2426,6 +2426,7 @@ class TestHDTicket(FrappeTestCase):
         # dimensy: ticket type and every custom field (channel, platform, contact email) stay agent-only
         self.assertTrue(is_internal_ticket_field("ticket_type"))
         self.assertTrue(is_internal_ticket_field("custom_channel"))
+        self.assertFalse(is_internal_ticket_field("custom_topic"))  # the topic is chosen by the customer
         self.assertTrue(is_internal_ticket_field("priority"))
         self.assertFalse(is_internal_ticket_field("subject"))
         self.assertFalse(is_internal_ticket_field("status"))

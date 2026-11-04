@@ -119,6 +119,9 @@ def is_ticket_auditor(user: str | None = None) -> bool:
     )
 
 
+# Dimensy: custom fields the customer fills in on the portal form and may read back on their own ticket.
+CUSTOMER_CUSTOM_FIELDS = ("custom_topic",)
+
 # Dimensy: internal ticket data that must never reach non-agents (portal customers).
 INTERNAL_TICKET_FIELDS = (
     "priority",
@@ -174,7 +177,7 @@ def is_internal_ticket_field(fieldname: str | None) -> bool:
     if _SAFE_COUNT.match(str(fieldname).strip().lower()):
         return False
     name = _plain_field_name(fieldname)
-    return name is None or name in INTERNAL_TICKET_FIELDS or name.startswith("custom_")
+    return name is None or name in INTERNAL_TICKET_FIELDS or (name.startswith("custom_") and name not in CUSTOMER_CUSTOM_FIELDS)
 
 
 def _strings_in(value) -> list[str]:
