@@ -36,6 +36,7 @@ from helpdesk.utils import (
     get_doc_room,
     is_admin,
     is_agent,
+    REPLY_TEAM,
     is_ticket_auditor,
     monitor_denies,
     publish_event,
@@ -122,18 +123,21 @@ class HDTicket(Document):
         self.validate_relay_creator()
 
     def validate_relay_creator(self):
-        """dimensy: an agent who made the ticket but no longer has standing on it (it moved to another team and the agent was
-        released) may only change its status, to mark the answer as delivered on WhatsApp or the phone (SOP-2). The other
-        content belongs to the team that holds the ticket; without this the agent could change the type back and take it home."""
+        """dimensy: an agent without working standing on a ticket may only change its status, to mark the answer as delivered on
+        WhatsApp or the phone (procedure 6.4.4). Working standing is being its assignee or a member of its team. Two kinds of agent
+        can reach a ticket without it: the one who made it (the ticket moved to another team and the agent was released) and
+        Customer Service, which reads every ticket. The content belongs to the team that holds the ticket; without this the agent
+        could change the type back and take it home, or change the priority of another team's ticket."""
         user = frappe.session.user
         before = None if self.is_new() else self.get_doc_before_save()
         if (
             not before
             or user == "Administrator"
-            or user != before.owner
             or is_admin(user)
             or not is_agent(user)
-            or _agent_has_permission(before, user)
+            or frappe.flags.get("hd_inserting_ticket") == self.name
+            or not (user == before.owner or _in_team(user, REPLY_TEAM))
+            or _has_working_standing(before, user)
         ):
             return
         locked = [f for f in RELAY_LOCKED_FIELDS if self.has_value_changed(f)]
@@ -232,7 +236,12 @@ class HDTicket(Document):
         self.tag_first_ticket()
 
         if self.get("description"):
-            self.create_communication_via_contact(self.description, new_ticket=True)
+            # dimensy: the save this triggers (reporter fields, status) belongs to the insert, not to an edit by the agent
+            frappe.flags.hd_inserting_ticket = self.name
+            try:
+                self.create_communication_via_contact(self.description, new_ticket=True)
+            finally:
+                frappe.flags.hd_inserting_ticket = None
             self.handle_inline_media_new_ticket()
 
         send_ack_email = frappe.db.get_single_value(
@@ -1423,6 +1432,20 @@ RELAY_LOCKED_FIELDS = (
     "custom_reporter_phone",
     "custom_revocation_validated",
 )
+
+def _in_team(user: str, team: str) -> bool:
+    return bool(frappe.db.exists("HD Team Member", {"parent": team, "user": user}))
+
+
+def _has_working_standing(doc, user: str) -> bool:
+    """Assignee or member of the ticket's own team (reading rights that only come from a team that sees every ticket do not count)."""
+    try:
+        if user in json.loads(doc.get("_assign") or "[]"):
+            return True
+    except (ValueError, TypeError):
+        pass
+    return bool(doc.get("agent_group")) and _in_team(user, doc.get("agent_group"))
+
 
 # Check if `user` has access to this specific ticket (`doc`). This implements extra
 # permission checks which is not possible with standard permission system. This function
