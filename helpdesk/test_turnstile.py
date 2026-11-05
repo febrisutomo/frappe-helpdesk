@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import frappe
+import requests
 from frappe.tests import IntegrationTestCase
 
 from helpdesk.turnstile import verify_login_token
@@ -27,6 +28,16 @@ class TestTurnstile(IntegrationTestCase):
 			post.return_value.json.return_value = {"success": False}
 			self.assertRaises(frappe.AuthenticationError, verify_login_token)
 
+	def test_oversized_token_is_refused(self):
+		frappe.local.form_dict["cf-turnstile-response"] = "x" * 3000
+		self.assertRaises(frappe.AuthenticationError, verify_login_token)
+
+	def test_unreadable_answer_is_refused(self):
+		frappe.local.form_dict["cf-turnstile-response"] = "x"
+		with patch("helpdesk.turnstile.requests.post") as post:
+			post.return_value.json.side_effect = ValueError
+			self.assertRaises(frappe.AuthenticationError, verify_login_token)
+
 	def test_accepted_token_passes(self):
 		frappe.local.form_dict["cf-turnstile-response"] = "x"
 		with patch("helpdesk.turnstile.requests.post") as post:
@@ -35,5 +46,5 @@ class TestTurnstile(IntegrationTestCase):
 
 	def test_outage_lets_the_login_through(self):
 		frappe.local.form_dict["cf-turnstile-response"] = "x"
-		with patch("helpdesk.turnstile.requests.post", side_effect=OSError):
+		with patch("helpdesk.turnstile.requests.post", side_effect=requests.ConnectionError):
 			verify_login_token()
