@@ -40,6 +40,7 @@ def get_boot():
             "agent": get_agent_name(),
             # dimensy: the ticketing administrator reads tickets only; the agent app hides what it cannot do
             "ticket_auditor": is_ticket_auditor() or is_ticket_monitor(),  # the monitor gets the same read-only agent app
+            "ticket_monitor": is_ticket_monitor(),  # ...with a comment bar: internal comments only, no reply
             # dimensy: AGPL section 13 - offer the source of the modified version to portal users
             "source_code_url": frappe.conf.get("helpdesk_source_code_url") or "",
             "date_format": frappe.get_system_settings("date_format"),
