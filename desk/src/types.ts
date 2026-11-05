@@ -808,6 +808,7 @@ declare global {
     timezone: Record<"user" | "system", string>;
     agent: string | null;
     ticket_auditor: boolean;
+    ticket_monitor: boolean;
     source_code_url: string;
     default_country: string;
     apps: string[];

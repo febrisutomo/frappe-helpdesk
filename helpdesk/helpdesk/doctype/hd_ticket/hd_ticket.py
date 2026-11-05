@@ -37,6 +37,7 @@ from helpdesk.utils import (
     is_agent,
     REPLY_TEAM,
     is_ticket_auditor,
+    is_ticket_monitor,
     monitor_denies,
     publish_event,
 )
@@ -792,7 +793,8 @@ class HDTicket(Document):
                 _("You are not permitted to add a comment"), frappe.PermissionError
             )
         # dimensy: `run_doc_method` only checks read permission; commenting needs write (the ticketing administrator only reads)
-        frappe.has_permission("HD Ticket", "write", doc=self, throw=True)
+        # the Manajer PSrE only reads the ticket but may add an internal comment (comment_has_permission allows just that)
+        frappe.has_permission("HD Ticket", "read" if is_ticket_monitor() else "write", doc=self, throw=True)
         c = frappe.new_doc("HD Ticket Comment")
         c.commented_by = frappe.session.user
         c.content = content
@@ -1634,7 +1636,8 @@ activity_permission_query = _ticket_scoped_query("HD Ticket Activity", "ticket")
 
 
 def comment_has_permission(doc, ptype=None, user=None):
-    if monitor_denies(ptype, user):
+    # dimensy: the Manajer PSrE may add internal comments (an instruction recorded on the ticket), never change or delete one
+    if monitor_denies(ptype, user) and ptype != "create":
         return False
     return _ticket_scoped_permission(doc.get("reference_ticket"), user)
 

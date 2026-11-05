@@ -5,6 +5,7 @@
     >
       <div class="flex gap-1.5 items-center">
         <Button
+          v-if="!isTicketMonitor"
           ref="sendEmailRef"
           variant="ghost"
           :label="__('Reply')"
@@ -34,6 +35,7 @@
     </div>
     <Transition name="slide">
       <div
+        v-if="!isTicketMonitor"
         v-show="showEmailBox"
         ref="emailBoxRef"
         @keydown.ctrl.enter.capture.stop="submitEmail"
@@ -117,6 +119,8 @@ import { onClickOutside } from "@vueuse/core";
 import { ref, watch } from "vue";
 
 const emit = defineEmits(["update"]);
+// dimensy: the Manajer PSrE writes internal comments only, so the reply button and editor are not shown
+const isTicketMonitor = Boolean(window.ticket_monitor);
 const content = defineModel("content");
 const { isMac } = useDevice();
 const { isMobileView } = useScreenSize();

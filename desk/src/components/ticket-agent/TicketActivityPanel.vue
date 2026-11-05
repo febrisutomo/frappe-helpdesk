@@ -33,7 +33,7 @@
   </Tabs>
   <!-- Comm Area -->
   <CommunicationArea
-    v-if="!isTicketAuditor"
+    v-if="!isTicketAuditor || isTicketMonitor"
     ref="communicationAreaRef"
     :ticketId="String(ticket.doc?.name)"
     :to-emails="[ticket.doc?.raised_by]"
@@ -53,6 +53,8 @@
 import CommunicationArea from "@/components/CommunicationArea.vue";
 // dimensy: the ticketing administrator reads tickets, so there is no reply or comment bar
 const isTicketAuditor = Boolean(window.ticket_auditor);
+// dimensy: the Manajer PSrE monitors, but may write internal comments (no reply to the reporter)
+const isTicketMonitor = Boolean(window.ticket_monitor);
 import {
   ActivityIcon,
   CommentIcon,
