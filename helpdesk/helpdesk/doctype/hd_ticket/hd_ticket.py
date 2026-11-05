@@ -793,7 +793,10 @@ class HDTicket(Document):
                 _("You are not permitted to add a comment"), frappe.PermissionError
             )
         # dimensy: `run_doc_method` only checks read permission; commenting needs write (the ticketing administrator only reads)
-        # the Manajer PSrE only reads the ticket but may add an internal comment (comment_has_permission allows just that)
+        # the Manajer PSrE only reads the ticket but may add an internal comment (comment_has_permission allows just that), without files:
+        # attaching goes by file URL, so it could pull in a file the monitor may not open
+        if attachments and is_ticket_monitor():
+            frappe.throw(_("You are not permitted to attach files"), frappe.PermissionError)
         frappe.has_permission("HD Ticket", "read" if is_ticket_monitor() else "write", doc=self, throw=True)
         c = frappe.new_doc("HD Ticket Comment")
         c.commented_by = frappe.session.user

@@ -25,3 +25,20 @@ class TestMonitorComment(IntegrationTestCase):
 	def test_monitor_still_cannot_change_the_ticket(self):
 		self.assertFalse(frappe.has_permission("HD Ticket", "write", doc=self.ticket.name, user=MONITOR))
 		self.assertFalse(frappe.has_permission(doc=frappe.new_doc("HD Ticket"), ptype="create", user=MONITOR))
+
+	def test_a_comment_is_always_written_by_its_sender(self):
+		frappe.set_user(MONITOR)
+		try:
+			c = frappe.get_doc({"doctype": "HD Ticket Comment", "reference_ticket": self.ticket.name, "content": "<p>x</p>",
+				"commented_by": "Administrator", "is_pinned": 1}).insert(ignore_permissions=True)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(c.commented_by, MONITOR)
+		self.assertFalse(c.is_pinned)
+
+	def test_monitor_cannot_attach_files_to_a_comment(self):
+		frappe.set_user(MONITOR)
+		try:
+			self.assertRaises(frappe.PermissionError, self.ticket.new_comment, "<p>x</p>", [{"file_url": "/private/files/other.pdf"}])
+		finally:
+			frappe.set_user("Administrator")
