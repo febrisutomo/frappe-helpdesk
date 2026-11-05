@@ -4,6 +4,8 @@ Configured per site with `turnstile_site_key` and `turnstile_secret_key` in site
 changes. The secret key never leaves the server; the site key is public and served to the login page script.
 """
 
+import hmac
+
 import frappe
 import requests
 
@@ -23,7 +25,7 @@ def verify_login_token(login_manager=None):
 	failure is logged, so an outage at Cloudflare does not lock the support team out.
 	"""
 	secret = frappe.conf.get("turnstile_secret_key")
-	if not secret:
+	if not secret or _has_bypass_token():
 		return
 
 	token = frappe.local.form_dict.get("cf-turnstile-response")
@@ -47,3 +49,13 @@ def verify_login_token(login_manager=None):
 		success = False
 	if not success:
 		frappe.throw("Pemeriksaan keamanan gagal. Muat ulang halaman lalu coba lagi.", frappe.AuthenticationError)
+
+
+def _has_bypass_token():
+	"""Post-deployment test scripts log in over the API and cannot solve a widget. They send the site's
+	`turnstile_bypass_token` in `X-Turnstile-Bypass`; without that setting (the default) nothing is skipped.
+	Set it only for the test window and remove it afterwards."""
+	token = frappe.conf.get("turnstile_bypass_token")
+	request = getattr(frappe.local, "request", None)
+	sent = request.headers.get("X-Turnstile-Bypass") if request else None
+	return bool(token and sent and hmac.compare_digest(str(token), str(sent)))
