@@ -19,7 +19,7 @@ def site_key():
 def verify_login_token(login_manager=None):
 	"""`before_login` hook (it runs before the password is checked): a login needs a Turnstile token that Cloudflare accepts.
 
-	A missing or rejected token stops the login. If the request to Cloudflare itself fails (network error, timeout, HTTP error) the login goes on and the
+	A missing or rejected token stops the login. If Cloudflare gives no answer (network error, timeout, 5xx) the login goes on and the
 	failure is logged, so an outage at Cloudflare does not lock the support team out.
 	"""
 	secret = frappe.conf.get("turnstile_secret_key")
@@ -35,13 +35,15 @@ def verify_login_token(login_manager=None):
 			data={"secret": secret, "response": token, "remoteip": frappe.local.request_ip},
 			timeout=5,
 		)
-		response.raise_for_status()
-	except requests.RequestException:  # Cloudflare unreachable or failing: only this case lets the login through
+	except (requests.ConnectionError, requests.Timeout):  # no answer from Cloudflare: the login goes on
 		frappe.log_error("Turnstile siteverify tidak dapat dihubungi; login diteruskan", "Turnstile")
 		return
+	if response.status_code >= 500:  # Cloudflare failing on its side
+		frappe.log_error(f"Turnstile siteverify menjawab {response.status_code}; login diteruskan", "Turnstile")
+		return
 	try:
-		success = response.json().get("success")
-	except ValueError:  # an answer we cannot read is not a pass
+		success = response.json().get("success") is True
+	except ValueError:  # an answer we cannot read, or a 4xx, is not a pass
 		success = False
 	if not success:
 		frappe.throw("Pemeriksaan keamanan gagal. Muat ulang halaman lalu coba lagi.", frappe.AuthenticationError)
