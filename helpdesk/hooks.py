@@ -47,6 +47,8 @@ scheduler_events = {
 
 
 before_request = ["helpdesk.utils.restrict_internal_ticket_access"]
+before_login = ["helpdesk.turnstile.verify_login_token"]
+web_include_js = "/assets/helpdesk/js/turnstile_login.js"
 after_request = ["helpdesk.utils.strip_internal_ticket_fields"]
 
 website_route_rules = [
