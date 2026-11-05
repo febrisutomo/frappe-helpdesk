@@ -29,7 +29,6 @@ from helpdesk.helpdesk.utils.email import (
     default_ticket_outgoing_email_account,
 )
 from helpdesk.utils import (
-    AUDITOR_HIDDEN_TYPE_PREFIX,
     capture_event,
     get_agents_team,
     get_customers,
@@ -1509,14 +1508,8 @@ def has_permission(doc, ptype=None, user=None):
     if not is_agent(user):
         return False
     if is_ticket_auditor(user):
-        return _auditor_can_read(doc)
+        return True  # reads every ticket, incidents included; writing is refused by the role permissions
     return _agent_has_permission(doc, user)
-
-
-def _auditor_can_read(doc) -> bool:
-    """Dimensy: the ticketing administrator reads every ticket except security incidents. Writing is refused by the
-    role permissions (read, export, report and print only), not here."""
-    return not (doc.get("ticket_type") or "").startswith(AUDITOR_HIDDEN_TYPE_PREFIX)
 
 
 def _is_customer_manager(customer: str, user: str) -> bool:
@@ -1571,9 +1564,7 @@ def permission_query(user: str | None = None):
     if not is_agent(user):
         return _customer_query(user)
     if is_ticket_auditor(user):
-        return "(`tabHD Ticket`.ticket_type IS NULL OR `tabHD Ticket`.ticket_type NOT LIKE {p})".format(
-            p=frappe.db.escape(AUDITOR_HIDDEN_TYPE_PREFIX + "%")
-        )
+        return  # sees every ticket, incidents included (read only)
     return _agent_query(user)
 
 
