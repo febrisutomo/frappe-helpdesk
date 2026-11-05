@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import frappe
@@ -14,6 +15,7 @@ class TestTurnstile(IntegrationTestCase):
 
 	def tearDown(self):
 		frappe.conf.pop("turnstile_secret_key", None)
+		frappe.conf.pop("turnstile_bypass_token", None)
 
 	def test_off_without_secret(self):
 		frappe.conf.pop("turnstile_secret_key")
@@ -64,3 +66,14 @@ class TestTurnstile(IntegrationTestCase):
 		frappe.local.form_dict["cf-turnstile-response"] = "x"
 		with patch("helpdesk.turnstile.requests.post", side_effect=requests.ConnectionError):
 			verify_login_token()
+
+	def test_bypass_token_skips_the_check_only_when_it_matches(self):
+		frappe.conf.turnstile_bypass_token = "t0ken"
+		with patch.object(frappe.local, "request", SimpleNamespace(headers={"X-Turnstile-Bypass": "t0ken"}), create=True):
+			verify_login_token()
+		with patch.object(frappe.local, "request", SimpleNamespace(headers={"X-Turnstile-Bypass": "other"}), create=True):
+			self.assertRaises(frappe.AuthenticationError, verify_login_token)
+
+	def test_bypass_header_is_ignored_without_the_setting(self):
+		with patch.object(frappe.local, "request", SimpleNamespace(headers={"X-Turnstile-Bypass": "anything"}), create=True):
+			self.assertRaises(frappe.AuthenticationError, verify_login_token)
