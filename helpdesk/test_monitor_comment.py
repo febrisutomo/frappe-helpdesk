@@ -42,3 +42,15 @@ class TestMonitorComment(IntegrationTestCase):
 			self.assertRaises(frappe.PermissionError, self.ticket.new_comment, "<p>x</p>", [{"file_url": "/private/files/other.pdf"}])
 		finally:
 			frappe.set_user("Administrator")
+
+	def test_the_author_of_a_saved_comment_cannot_be_changed(self):
+		c = frappe.get_doc({"doctype": "HD Ticket Comment", "reference_ticket": self.ticket.name, "content": "<p>x</p>"}).insert(ignore_permissions=True)
+		author = c.commented_by
+		frappe.set_user(MONITOR)
+		try:
+			c.reload()
+			c.commented_by = MONITOR
+			c.save(ignore_permissions=True)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.get_value("HD Ticket Comment", c.name, "commented_by"), author)

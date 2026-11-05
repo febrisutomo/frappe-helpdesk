@@ -22,6 +22,11 @@ class HDTicketComment(HasMentions, Document):
         if is_ticket_monitor():
             self.is_pinned = 0
 
+    def validate(self):
+        # dimensy: the author of a saved comment cannot be changed (the generic update would accept it)
+        if not self.is_new() and self.has_value_changed("commented_by") and frappe.session.user != "Administrator":
+            self.commented_by = self.get_doc_before_save().commented_by
+
     def on_update(self):
         if self.has_value_changed("content"):
             original_content = (
