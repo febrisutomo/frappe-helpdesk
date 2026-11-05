@@ -66,7 +66,7 @@ def is_agent(user: str | None = None) -> bool:
 
 
 # Dimensy: the ticketing administrator manages accounts, teams, SLAs and so on, and may read and export tickets, but never
-# works on them. Security incident tickets (type prefix below) stay with Security and the managers.
+# works on them. It reads security incident tickets too (type prefix below), but cannot rename or delete their ticket type.
 TICKET_AUDITOR_ROLE = "Admin Ticketing"
 AUDITOR_HIDDEN_TYPE_PREFIX = "INS - "
 
