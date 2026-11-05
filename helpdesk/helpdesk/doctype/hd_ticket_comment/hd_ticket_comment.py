@@ -6,13 +6,21 @@ from frappe import _
 from frappe.model.document import Document
 
 from helpdesk.mixins.mentions import HasMentions
-from helpdesk.utils import capture_event, get_doc_room, publish_event
+from helpdesk.utils import capture_event, get_doc_room, is_ticket_monitor, publish_event
 
 PRESET_EMOJIS = ["👍", "👎", "❤️", "🎉", "👀", "✅"]
 
 
 class HDTicketComment(HasMentions, Document):
     mentions_field = "content"
+
+    def before_insert(self):
+        # dimensy: a comment is always written by the person who sent it (the generic create accepts any `commented_by`),
+        # and the Manajer PSrE, who only writes plain internal comments, does not pin them
+        if frappe.session.user != "Administrator":
+            self.commented_by = frappe.session.user
+        if is_ticket_monitor():
+            self.is_pinned = 0
 
     def on_update(self):
         if self.has_value_changed("content"):
