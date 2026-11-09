@@ -34,6 +34,9 @@ h1,h2{font-family:var(--head);font-weight:500;letter-spacing:-.01em;color:var(--
 .bar .sep{width:1px;height:22px;background:var(--line-2)}
 .bar .name{font-family:var(--head);font-weight:500;color:var(--ink);text-decoration:none}
 .bar .btn{margin-left:auto}
+.bar .btn-ghost+.btn{margin-left:0}
+.btn-ghost{background:transparent;color:var(--primary-dark);border:1px solid var(--primary-dark);padding:9px 20px}
+.btn-ghost:hover{color:var(--primary-dark);box-shadow:none;background:rgba(4,77,164,.06)}
 
 /* hero: light blue with the grid motif of the portal */
 .hero{position:relative;z-index:2;background:
@@ -144,6 +147,7 @@ footer a:hover{color:var(--primary)}
     <a href="/help" aria-label="Pusat Bantuan">{% if logo %}<img src="{{ logo | e }}" alt="Dimensy">{% else %}<strong>Dimensy</strong>{% endif %}</a>
     <span class="sep" aria-hidden="true"></span>
     <a class="name" href="/help">Pusat Bantuan</a>
+    {% if is_guest %}<a class="btn btn-ghost" href="/login?redirect-to=/helpdesk/my-tickets">Login</a>{% endif %}
     <a class="btn" href="/helpdesk/my-tickets/new">Buat Tiket</a>
   </div>
 </header>

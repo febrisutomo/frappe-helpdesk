@@ -19,6 +19,7 @@ MONTHS = "Januari Februari Maret April Mei Juni Juli Agustus September Oktober N
 def get_context(context):
     parts = [p for p in (frappe.form_dict.get("app_path") or "").split("/") if p]
     context.no_header = 1
+    context.is_guest = frappe.session.user == "Guest"  # the header offers Login only to visitors who are not signed in
     context.logo = frappe.conf.get("helpdesk_help_logo") or ""
     context.categories = context.articles = context.article = context.category = None
 
