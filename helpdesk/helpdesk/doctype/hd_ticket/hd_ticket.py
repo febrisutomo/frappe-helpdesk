@@ -157,11 +157,10 @@ class HDTicket(Document):
         self.validate_relay_creator()
 
     def validate_relay_creator(self):
-        """dimensy: an agent without working standing on a ticket may only change its status, to mark the answer as delivered on
-        WhatsApp or the phone (procedure 6.4.4). Working standing is being its assignee or a member of its team. Two kinds of agent
-        can reach a ticket without it: the one who made it (the ticket moved to another team and the agent was released) and
-        Customer Service, which reads every ticket. The content belongs to the team that holds the ticket; without this the agent
-        could change the type back and take it home, or change the priority of another team's ticket."""
+        """dimensy: an agent who made a ticket keeps reaching it through ownership after it moved to another team; without working
+        standing (assignee or member of the ticket's own team) that agent may only change its status. Customer Service is exempt:
+        it reads every ticket and sorts, corrects and relays them, so it may change any field of any team's ticket (P56). The
+        revocation validation stays with RA Administrator (the project's Server Script)."""
         user = frappe.session.user
         before = None if self.is_new() else self.get_doc_before_save()
         if (
@@ -170,18 +169,12 @@ class HDTicket(Document):
             or is_admin(user)
             or not is_agent(user)
             or frappe.flags.get("hd_inserting_ticket") == self.name
-            or not (user == before.owner or _in_team(user, REPLY_TEAM))
+            or user != before.owner
+            or _in_team(user, REPLY_TEAM)
             or _has_working_standing(before, user)
         ):
             return
-        locked = [f for f in RELAY_LOCKED_FIELDS if self.has_value_changed(f)]
-        if _in_team(user, REPLY_TEAM) and self.has_value_changed("ticket_type"):
-            # Customer Service sorts the ticket and corrects a wrong type (procedure 6.3.4, 6.4.8). Priority and team may change only
-            # to what the new type implies, so the type cannot be a way to set them freely
-            defaults = frappe.db.get_value("HD Ticket Type", self.ticket_type, ["priority", "custom_team"], as_dict=True) or {}
-            follows = {"priority": defaults.get("priority"), "agent_group": defaults.get("custom_team")}
-            locked = [f for f in locked if f != "ticket_type" and not (f in follows and follows[f] and self.get(f) == follows[f])]
-        if locked:
+        if any(self.has_value_changed(f) for f in RELAY_LOCKED_FIELDS):
             frappe.throw(
                 _("Only the status of this ticket can be changed now that it is with another team"),
                 frappe.PermissionError,
