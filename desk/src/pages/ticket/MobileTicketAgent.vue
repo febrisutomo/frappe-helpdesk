@@ -39,10 +39,11 @@
       <!-- left side -->
       <div
         class="flex items-center gap-2 max-w-[65%]"
-        :class="{ 'pointer-events-none': isTicketAuditor }"
+        :class="{ 'pointer-events-none': isTicketAuditor && !isTicketAssigner }"
       >
         <Link
           class="min-w-0 flex-1"
+          :class="{ 'pointer-events-none': isTicketAuditor }"
           doctype="HD Team"
           :hide-clear-button="true"
           :model-value="ticket.doc.agent_group"
@@ -76,7 +77,7 @@
         <AssignTo
           class="min-w-0 flex-1"
           :hide-label="true"
-          :readonly="isTicketAuditor"
+          :readonly="isTicketAuditor && !isTicketAssigner"
         />
       </div>
       <!-- right side -->
@@ -310,6 +311,7 @@ type ticketId = string | number;
 
 // dimensy: the ticketing administrator reads a ticket and changes nothing
 const isTicketAuditor = Boolean(window.ticket_auditor);
+const isTicketAssigner = Boolean(window.ticket_assigner); // dimensy: the CTO may change assignees only
 
 const props = defineProps({
   ticketId: {

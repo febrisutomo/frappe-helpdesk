@@ -5,6 +5,7 @@ from helpdesk.utils import (
     RESTRICTED_ASSIGNMENT_TEAMS,
     RESTRICTED_ASSIGNMENT_TYPE_PREFIXES,
     is_agent,
+    is_escalation_assigner,
     is_ticket_auditor,
     is_ticket_monitor,
 )
@@ -19,7 +20,8 @@ def validate(doc, method=None):
     if doc.reference_type != "HD Ticket":
         return
     _check_direct_assignment(doc)
-    people = [None] + ([doc.allocated_to] if doc.allocated_to else [])  # None: the session user
+    # None: the session user; the escalation monitor may assign others, but no monitor or administrator is ever assigned
+    people = ([] if is_escalation_assigner() else [None]) + ([doc.allocated_to] if doc.allocated_to else [])
     if any(check(person) for check in (is_ticket_auditor, is_ticket_monitor) for person in people):
         frappe.throw(_("The ticketing administrator and the monitor cannot assign tickets or be assigned one"), frappe.PermissionError)
     _check_restricted_assignee(doc)
