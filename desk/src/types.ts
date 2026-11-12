@@ -809,6 +809,7 @@ declare global {
     agent: string | null;
     ticket_auditor: boolean;
     ticket_monitor: boolean;
+    ticket_assigner: boolean;
     source_code_url: string;
     default_country: string;
     apps: string[];

@@ -51,7 +51,7 @@
               <FieldLabel label="Assignee" />
               <div
                 class="-m-1 min-h-[28px] min-w-0 flex-1 items-center overflow-hidden p-1"
-                :class="{ 'pointer-events-none': isTicketAuditor }"
+                :class="{ 'pointer-events-none': isTicketAuditor && !isTicketAssigner }"
               >
                 <AssignTo hide-label ghost />
               </div>
@@ -208,6 +208,7 @@ const { notifyTicketUpdate } = useNotifyTicketUpdate(ticket.value?.name);
 const { $dialog } = globalStore();
 // dimensy: the ticketing administrator reads tickets: every field of the panel is read only
 const isTicketAuditor = Boolean(window.ticket_auditor);
+const isTicketAssigner = Boolean(window.ticket_assigner); // dimensy: the CTO may change assignees only
 const auditorTags = computed(() =>
   String(ticket.value.doc?._user_tags || "")
     .split(",")

@@ -85,6 +85,17 @@ def is_ticket_monitor(user: str | None = None) -> bool:
     return user != "Administrator" and TICKET_MONITOR_ROLE in frappe.get_roles(user)
 
 
+# Dimensy: the CTO is a monitor as well and receives the SLA escalation mail; on an escalation it may hand the ticket to another
+# agent or add a supporting agent. Nothing else: no triage, no priority or field change, no reply.
+SLA_ESCALATION_ROLE = "SLA Escalation"
+
+
+def is_escalation_assigner(user: str | None = None) -> bool:
+    """Whether `user` is a monitor who may change the assignees of a ticket (assignments only)."""
+    user = user or frappe.session.user
+    return is_ticket_monitor(user) and SLA_ESCALATION_ROLE in frappe.get_roles(user)
+
+
 def monitor_denies(ptype: str | None, user: str | None = None) -> bool:
     """Whether `user` is a monitor and `ptype` is more than reading."""
     return bool(ptype) and ptype not in MONITOR_ALLOWED_PTYPES and is_ticket_monitor(user)
@@ -294,6 +305,15 @@ def _guard_generic_ticket_methods(user: str, path: str, form):
     if user in ("Administrator", "Guest"):
         return
     names = [n for group in _method_targets(form) for n in group[1]]  # every name given, whichever doctype it is filed under
+    targets = _method_targets(form)
+    if (
+        method in _ASSIGNMENT_METHODS
+        and is_escalation_assigner(user)
+        and names
+        and all(doctype.strip().lower() == "hd ticket" for doctype, _ in targets)  # tickets only, nothing filed under another doctype
+        and all(frappe.has_permission("HD Ticket", "read", n, user=user) for n in names)
+    ):
+        return  # the escalation monitor reads every ticket and may change its assignees, and only that
     if (
         not is_agent(user)
         or not names
