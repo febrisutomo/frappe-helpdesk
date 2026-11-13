@@ -18,6 +18,21 @@ export const useAgentStore = defineStore("agent", () => {
     }))
   );
 
+  // dimensy: teams can be mentioned too (@CS, @ASO ...); the backend notifies every member of the team
+  const teams = createListResource({
+    doctype: "HD Team",
+    fields: ["name"],
+    pageLength: 999,
+    auto: true,
+  });
+  const mentionables = computed(() => [
+    ...(teams.data ?? []).map((t) => ({
+      label: "Team " + t.name,
+      value: "team:" + t.name,
+    })),
+    ...(dropdown.value ?? []),
+  ]);
+
   function searchAgents(query: string) {
     return agents.data.filter((a) =>
       a.user?.toLowerCase().includes(query.toLowerCase())
@@ -26,6 +41,8 @@ export const useAgentStore = defineStore("agent", () => {
 
   return {
     dropdown,
+    mentionables,
+    teams,
     agents,
     searchAgents,
   };

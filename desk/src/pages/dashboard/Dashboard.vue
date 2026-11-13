@@ -50,6 +50,13 @@
             <LucideCalendar class="size-4 text-ink-gray-5 me-2" />
           </template>
         </DateRangePicker>
+        <!-- dimensy: customer tickets and internal tickets (Channel Internal) are counted separately on request -->
+        <FormControl
+          class="w-48"
+          type="select"
+          :options="sourceOptions"
+          v-model="filters.source"
+        />
         <Link
           v-if="isManager && !viewMyStats"
           class="form-control w-48"
@@ -211,6 +218,7 @@ import {
   dayjs,
   DonutChart,
   Dropdown,
+  FormControl,
   TabButtons,
   NumberChart,
   Tooltip,
@@ -237,13 +245,20 @@ type Filters = {
   period: string;
   agent: null | string;
   team: null | string;
+  source: string;
 };
 
 const filters = reactive<Filters>({
   period: getLastXDays(),
   agent: null,
   team: null,
+  source: "",
 });
+const sourceOptions = [
+  { label: __("All tickets"), value: "" },
+  { label: __("Customer tickets"), value: "customer" },
+  { label: __("Internal tickets"), value: "internal" },
+];
 
 interface ChartData {
   data: ChartValues[];
@@ -370,6 +385,7 @@ const hasAppliedFilter = computed(() => {
   return (
     filters.agent ||
     filters.team ||
+    filters.source ||
     (filters.period && filters.period !== getLastXDays(30))
   );
 });
@@ -389,6 +405,7 @@ const parseFilters = (filters: Filters) => {
     to_date: filters.period?.split(",")[1] ?? null,
     team: filters.team,
     agent: filters.agent,
+    source: filters.source,
   };
 };
 

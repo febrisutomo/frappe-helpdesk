@@ -5,7 +5,7 @@
     >
       <div class="flex gap-1.5 items-center">
         <Button
-          v-if="!isTicketMonitor"
+          v-if="!isTicketMonitor && !isInternal"
           ref="sendEmailRef"
           variant="ghost"
           :label="__('Reply')"
@@ -116,7 +116,7 @@ import { useScreenSize } from "@/composables/screen";
 import { useShortcut } from "@/composables/shortcuts";
 import { showCommentBox, showEmailBox } from "@/pages/ticket/modalStates";
 import { onClickOutside } from "@vueuse/core";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 const emit = defineEmits(["update"]);
 // dimensy: the Manajer PSrE writes internal comments only, so the reply button and editor are not shown
@@ -125,6 +125,8 @@ const content = defineModel("content");
 const { isMac } = useDevice();
 const { isMobileView } = useScreenSize();
 let doc = defineModel();
+// dimensy: internal tickets (Channel Internal) have no outside reporter and are worked through internal comments only (refused on the server too)
+const isInternal = computed(() => doc.value?.custom_channel === "Internal");
 // let doc = inject(TicketSymbol)?.value.doc
 const emailEditorRef = ref(null);
 const commentTextEditorRef = ref(null);
@@ -132,6 +134,7 @@ const emailBoxRef = ref(null);
 const commentBoxRef = ref(null);
 
 function toggleEmailBox() {
+  if (isInternal.value) return;
   if (showCommentBox.value) {
     showCommentBox.value = false;
   }
@@ -165,6 +168,7 @@ function splitIfString(str: string | string[]) {
 }
 
 function replyToEmail(data: object) {
+  if (isInternal.value) return;
   showEmailBox.value = true;
 
   emailEditorRef.value.addToReply(

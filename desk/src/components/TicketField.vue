@@ -97,7 +97,10 @@ const selectOptions = computed<Option[]>(() =>
   (props.field.fieldtype === "Select"
     ? props.field.options.split("\n")
     : []
-  ).map((option) => ({ label: option, value: option }))
+  )
+    // dimensy: the blank first option keeps the field empty until picked (Frappe fills the first option otherwise); it is not listed
+    .filter((option) => option.trim() !== "")
+    .map((option) => ({ label: option, value: option }))
 );
 
 const isSearchableSelect = computed(

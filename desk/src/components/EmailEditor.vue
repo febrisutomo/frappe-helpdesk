@@ -26,16 +26,10 @@
         </div>
         <div class="mx-6 md:mx-5 flex items-center gap-2 border-y py-2.5">
           <span class="text-p-xs text-ink-gray-4">{{ __("To") }}:</span>
-          <EmailMultiSelect
-            v-model="toEmailsClone"
-            class="flex-1"
-            scope="contact"
-            variant="ghost"
-            allow-custom-email
-            copy-on-click
-            :validate="validateEmailWithZod"
-            :custom-email-label="__('Add to recipients')"
-          />
+          <!-- dimensy: the reply goes to the reporter recorded on the ticket only (checked on the server too) -->
+          <span class="flex-1 truncate text-p-sm text-ink-gray-8">{{
+            toEmailsClone.join(", ")
+          }}</span>
           <div class="flex gap-1.5">
             <Button
               :label="__('Cc')"
@@ -46,16 +40,6 @@
                   : '!text-ink-gray-4',
               ]"
               @click="toggleCC()"
-            />
-            <Button
-              :label="__('Bcc')"
-              variant="ghost"
-              :class="[
-                bcc || showBCC
-                  ? '!bg-surface-gray-4 hover:bg-surface-gray-3'
-                  : '!text-ink-gray-4',
-              ]"
-              @click="toggleBCC()"
             />
           </div>
         </div>
@@ -77,25 +61,7 @@
             :custom-email-label="__('Add to recipients')"
           />
         </div>
-        <div
-          v-if="showBCC || bcc"
-          class="mx-5 flex items-center gap-2 py-2.5"
-          :class="bcc || showBCC ? 'border-b' : ''"
-        >
-          <span class="text-xs text-ink-gray-4">{{ __("Bcc:") }}</span>
-          <EmailMultiSelect
-            ref="bccInput"
-            v-model="bccEmailsClone"
-            class="flex-1"
-            scope="contact"
-            variant="ghost"
-            allow-custom-email
-            copy-on-click
-            :validate="validateEmailWithZod"
-            :custom-email-label="__('Add to recipients')"
-          />
-        </div>
-
+        <!-- dimensy: no Bcc on ticket replies (refused on the server) -->
         <!-- Editor content + quoted reply -->
         <div class="overflow-y-auto min-h-[7rem] max-h-[30vh] flex flex-col">
           <div class="flex-1">

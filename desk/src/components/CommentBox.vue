@@ -201,7 +201,7 @@ const isTicketMergedComment = computed(() => {
 const agentStore = useAgentStore();
 const extensions = buildEditorExtensions({
   mentions: () =>
-    (agentStore.dropdown ?? []).map((a: { label: string; value: string }) => ({
+    (agentStore.mentionables ?? []).map((a: { label: string; value: string }) => ({
       id: a.value,
       label: a.label,
     })),
