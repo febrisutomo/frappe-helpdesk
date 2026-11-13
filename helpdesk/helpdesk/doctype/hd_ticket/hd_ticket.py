@@ -1535,7 +1535,14 @@ def _agent_has_permission(doc, user: str) -> bool:
         if is_new or not doc.get("name")
         else frappe.db.get_value("HD Ticket", doc.get("name"), "agent_group")
     )
-    if show_tickets_without_team and not agent_group:
+    # dimensy: an internal ticket (Channel Internal) is never opened by the "tickets without a team" shortcut: it is read by its target
+    # team, its assignees, its requester (checked by the caller) and the monitors only
+    channel = (
+        doc.get("custom_channel")
+        if is_new or not doc.get("name")
+        else frappe.db.get_value("HD Ticket", doc.get("name"), "custom_channel")
+    ) or ""
+    if show_tickets_without_team and not agent_group and not is_internal_channel(channel):
         return True
 
     if doc.get("_assign"):
@@ -1547,13 +1554,8 @@ def _agent_has_permission(doc, user: str) -> bool:
 
     teams = get_agents_team(user)
     team_names = [t.team_name for t in teams]
-    # dimensy: an internal ticket (Channel Internal) is read by its target team, its assignees, its requester (owner, above) and the monitors, not by
+    # an internal ticket is read by its target team, its assignees, its requester (owner, above) and the monitors, not by
     # every team that sees all tickets (Customer Service)
-    channel = (
-        doc.get("custom_channel")
-        if is_new or not doc.get("name")
-        else frappe.db.get_value("HD Ticket", doc.get("name"), "custom_channel")
-    ) or ""
     if is_internal_channel(channel) and not is_ticket_monitor(user):
         return bool(agent_group) and agent_group in team_names
     if any(team.get("ignore_restrictions") for team in teams):
@@ -1597,7 +1599,11 @@ def _agent_query(user: str) -> str | None:
         "HD Settings", "do_not_restrict_tickets_without_an_agent_group"
     )
     if show_tickets_without_team:
-        query += " OR (`tabHD Ticket`.agent_group is null OR `tabHD Ticket`.agent_group = '')"
+        # dimensy: internal tickets are left out of this shortcut (see _agent_has_permission)
+        query += (
+            " OR ((`tabHD Ticket`.agent_group is null OR `tabHD Ticket`.agent_group = '')"
+            " AND (`tabHD Ticket`.custom_channel IS NULL OR `tabHD Ticket`.custom_channel != {p}))"
+        ).format(p=frappe.db.escape(INTERNAL_CHANNEL))
 
     # An agent on a team with `ignore_restrictions` set can see every team's tickets.
     teams = get_agents_team(user)
@@ -1607,8 +1613,7 @@ def _agent_query(user: str) -> str | None:
             return query
         if is_ticket_monitor(user):
             query += " OR (" + _build_in_clause("agent_group", all_teams) + ")"
-            if not show_tickets_without_team:
-                query += " OR (`tabHD Ticket`.agent_group is null)"
+            query += " OR (`tabHD Ticket`.agent_group is null)"  # monitors read every ticket, internal ones without a team included
             return query
         # dimensy: Customer Service sees every team's tickets except internal ones it is not tied to
         not_internal = "(`tabHD Ticket`.custom_channel IS NULL OR `tabHD Ticket`.custom_channel != {p})".format(
