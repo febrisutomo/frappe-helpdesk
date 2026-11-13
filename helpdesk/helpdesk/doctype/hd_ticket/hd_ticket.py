@@ -36,6 +36,7 @@ from helpdesk.utils import (
     is_admin,
     is_agent,
     INTERNAL_CHANNEL,
+    INTERNAL_OPEN_TO_CS_TYPE_PREFIX,
     is_internal_channel,
     REPLY_TEAMS,
     is_ticket_auditor,
@@ -1555,8 +1556,16 @@ def _agent_has_permission(doc, user: str) -> bool:
     teams = get_agents_team(user)
     team_names = [t.team_name for t in teams]
     # an internal ticket is read by its target team, its assignees, its requester (owner, above) and the monitors, not by
-    # every team that sees all tickets (Customer Service)
+    # every team that sees all tickets (Customer Service); Customer Service does read the internal tickets of customer-facing types (LYN)
     if is_internal_channel(channel) and not is_ticket_monitor(user):
+        if any(team.get("ignore_restrictions") for team in teams):
+            ticket_type = (
+                doc.get("ticket_type")
+                if is_new or not doc.get("name")
+                else frappe.db.get_value("HD Ticket", doc.get("name"), "ticket_type")
+            ) or ""
+            if ticket_type.startswith(INTERNAL_OPEN_TO_CS_TYPE_PREFIX):
+                return True
         return bool(agent_group) and agent_group in team_names
     if any(team.get("ignore_restrictions") for team in teams):
         return True
@@ -1615,10 +1624,11 @@ def _agent_query(user: str) -> str | None:
             query += " OR (" + _build_in_clause("agent_group", all_teams) + ")"
             query += " OR (`tabHD Ticket`.agent_group is null)"  # monitors read every ticket, internal ones without a team included
             return query
-        # dimensy: Customer Service sees every team's tickets except internal ones it is not tied to
-        not_internal = "(`tabHD Ticket`.custom_channel IS NULL OR `tabHD Ticket`.custom_channel != {p})".format(
-            p=frappe.db.escape(INTERNAL_CHANNEL)
-        )
+        # dimensy: Customer Service sees every team's tickets except internal ones it is not tied to (internal LYN tickets stay visible)
+        not_internal = (
+            "(`tabHD Ticket`.custom_channel IS NULL OR `tabHD Ticket`.custom_channel != {p}"
+            " OR `tabHD Ticket`.ticket_type LIKE {t})"
+        ).format(p=frappe.db.escape(INTERNAL_CHANNEL), t=frappe.db.escape(INTERNAL_OPEN_TO_CS_TYPE_PREFIX + "%"))
         query += " OR ((" + _build_in_clause("agent_group", all_teams) + ") AND " + not_internal + ")"
         if not show_tickets_without_team:
             query += " OR (`tabHD Ticket`.agent_group is null AND " + not_internal + ")"
