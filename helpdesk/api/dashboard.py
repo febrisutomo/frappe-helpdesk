@@ -42,6 +42,7 @@ def get_dashboard_data(
     to_date = filters.get("to_date") if filters else None
     team = filters.get("team") if filters else None
     agent = filters.get("agent") if filters else None
+    source = filters.get("source") if filters else None  # dimensy: "customer" or "internal" (Channel Internal); empty = both
 
     if agent == "@me":
         agent = frappe.session.user
@@ -56,6 +57,7 @@ def get_dashboard_data(
         to_date=to_date,
         team=team,
         agent=agent,
+        source=source,
     )
 
     dashboard = HelpdeskDashboard(_filters)
@@ -64,7 +66,7 @@ def get_dashboard_data(
         return dashboard.get_number_card_data()
     elif dashboard_type == "master":
         return get_master_dashboard_data(
-            from_date, to_date, _filters.team, _filters.agent
+            from_date, to_date, _filters.team, _filters.agent, _filters.source
         )
     elif dashboard_type == "trend":
         return dashboard.get_trend_data()
@@ -81,6 +83,7 @@ class HelpdeskDashboard:
         self.to_date = filters.get("to_date")
         self.team = filters.get("team")
         self.agent = filters.get("agent")
+        self.source = filters.get("source")
 
         self.ticket = DocType("HD Ticket")
         self.qb_conds = self._get_conditions()
@@ -109,6 +112,10 @@ class HelpdeskDashboard:
         conds = []
         if self.team:
             conds.append(self.ticket.agent_group == self.team)
+        if self.source == "internal":
+            conds.append(self.ticket.custom_channel == "Internal")
+        elif self.source == "customer":
+            conds.append(self.ticket.custom_channel.isnull() | (self.ticket.custom_channel != "Internal"))
         if self.agent:
             # Pass args to Function(...) directly. ParameterizedFunction is not callable.
             conds.append(
@@ -424,11 +431,15 @@ class HelpdeskDashboard:
 
 
 def get_master_dashboard_data(
-    from_date: str, to_date: str, team: str = None, agent: str = None
+    from_date: str, to_date: str, team: str = None, agent: str = None, source: str = None
 ) -> list[dict[str, any]]:
     filters = {
         "creation": ["between", [from_date, to_date]],
     }
+    if source == "internal":
+        filters["custom_channel"] = "Internal"
+    elif source == "customer":
+        filters["custom_channel"] = ["!=", "Internal"]  # frappe compares ifnull(field, ''), so tickets without a channel stay
     if team:
         filters["agent_group"] = team
     if agent:
