@@ -244,7 +244,8 @@ const coreFields = computed(() => {
     // cant handle required depends on as we directly set the value in DB on change
     field["required"] = field.reqd;
     const formatted = getFieldInFormat(field, field);
-    if (fieldname !== "custom_revocation_validated") formatted["visible"] = true;
+    // dimensy: core fields show even when empty, but still follow depends_on (Platform is hidden on internal tickets)
+    if (fieldname !== "custom_revocation_validated") formatted["visible"] = Boolean(field.display_via_depends_on);
     return formatted;
   }).filter(Boolean);
 });

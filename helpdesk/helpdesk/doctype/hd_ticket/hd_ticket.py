@@ -35,7 +35,9 @@ from helpdesk.utils import (
     get_doc_room,
     is_admin,
     is_agent,
-    REPLY_TEAM,
+    INTERNAL_CHANNEL,
+    is_internal_channel,
+    REPLY_TEAMS,
     is_ticket_auditor,
     is_ticket_monitor,
     monitor_denies,
@@ -170,7 +172,7 @@ class HDTicket(Document):
             or not is_agent(user)
             or frappe.flags.get("hd_inserting_ticket") == self.name
             or user != before.owner
-            or _in_team(user, REPLY_TEAM)
+            or any(_in_team(user, team) for team in REPLY_TEAMS)
             or _has_working_standing(before, user)
         ):
             return
@@ -214,6 +216,7 @@ class HDTicket(Document):
             or self.feedback_rating
             or not self.has_value_changed("status")
             or not self.key
+            or is_internal_channel(self.get("custom_channel"))  # dimensy: an internal requester is not asked to rate
         ):
             return
 
@@ -1543,10 +1546,19 @@ def _agent_has_permission(doc, user: str) -> bool:
             return False
 
     teams = get_agents_team(user)
+    team_names = [t.team_name for t in teams]
+    # dimensy: an internal ticket (Channel Internal) is read by its target team, its assignees, its requester (owner, above) and the monitors, not by
+    # every team that sees all tickets (Customer Service)
+    channel = (
+        doc.get("custom_channel")
+        if is_new or not doc.get("name")
+        else frappe.db.get_value("HD Ticket", doc.get("name"), "custom_channel")
+    ) or ""
+    if is_internal_channel(channel) and not is_ticket_monitor(user):
+        return bool(agent_group) and agent_group in team_names
     if any(team.get("ignore_restrictions") for team in teams):
         return True
 
-    team_names = [t.team_name for t in teams]
     is_team_member = frappe.db.exists(
         "HD Team Member", {"parent": ["in", team_names], "user": user}
     )
@@ -1593,9 +1605,22 @@ def _agent_query(user: str) -> str | None:
         all_teams = frappe.get_all("HD Team", pluck="name")
         if not all_teams:
             return query
-        query += " OR (" + _build_in_clause("agent_group", all_teams) + ")"
+        if is_ticket_monitor(user):
+            query += " OR (" + _build_in_clause("agent_group", all_teams) + ")"
+            if not show_tickets_without_team:
+                query += " OR (`tabHD Ticket`.agent_group is null)"
+            return query
+        # dimensy: Customer Service sees every team's tickets except internal ones it is not tied to
+        not_internal = "(`tabHD Ticket`.custom_channel IS NULL OR `tabHD Ticket`.custom_channel != {p})".format(
+            p=frappe.db.escape(INTERNAL_CHANNEL)
+        )
+        query += " OR ((" + _build_in_clause("agent_group", all_teams) + ") AND " + not_internal + ")"
         if not show_tickets_without_team:
-            query += " OR (`tabHD Ticket`.agent_group is null)"
+            query += " OR (`tabHD Ticket`.agent_group is null AND " + not_internal + ")"
+        query += " OR (JSON_SEARCH(`tabHD Ticket`._assign, 'all', {u}) IS NOT NULL)".format(u=frappe.db.escape(user))
+        own = [t.get("team_name") for t in teams]
+        if own:
+            query += " OR (" + _build_in_clause("agent_group", own) + ")"
         return query
 
     query += " OR (JSON_SEARCH(`tabHD Ticket`._assign, 'all', {u}) IS NOT NULL)".format(

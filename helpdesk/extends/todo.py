@@ -66,7 +66,7 @@ def _check_restricted_assignee(doc):
     if frappe.db.exists("HD Team Member", {"parent": ["in", RESTRICTED_ASSIGNMENT_TEAMS], "user": doc.allocated_to}):
         return
     frappe.throw(
-        _("Only members of the RA Administrator, Security, Technical Support and Developer teams can be assigned this type of ticket"),
+        _("Only members of the Admin RA, Security, ASO, AAP and Developer teams can be assigned this type of ticket"),
         frappe.PermissionError,
     )
 

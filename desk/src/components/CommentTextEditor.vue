@@ -109,7 +109,7 @@ import { useStorage } from "@vueuse/core";
 import { storeToRefs } from "pinia";
 
 const { updateOnboardingStep } = useOnboarding("helpdesk");
-const { agents: agentsList, dropdown } = storeToRefs(useAgentStore());
+const { agents: agentsList, mentionables } = storeToRefs(useAgentStore());
 const { isManager } = useAuthStore();
 
 const props = defineProps({
@@ -142,7 +142,7 @@ const newComment = useStorage("commentBoxContent" + props.ticketId, null);
 // Mentions as a reactive getter so the `@` list stays in sync as agents load.
 const extensions = buildEditorExtensions({
   mentions: () =>
-    (dropdown.value ?? []).map((a: { label: string; value: string }) => ({
+    (mentionables.value ?? []).map((a: { label: string; value: string }) => ({
       id: a.value,
       label: a.label,
     })),

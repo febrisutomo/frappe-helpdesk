@@ -74,7 +74,10 @@ const component = computed(() => {
   } else if (props.field.fieldtype === "Select") {
     return h(Autocomplete, {
       options: props.field.options
-        ? props.field.options.split("\n").map((o) => ({ label: o, value: o }))
+        ? props.field.options
+            .split("\n")
+            .filter((o) => o.trim() !== "") // dimensy: the blank first option is not listed
+            .map((o) => ({ label: o, value: o }))
         : [],
       size: "sm",
     });

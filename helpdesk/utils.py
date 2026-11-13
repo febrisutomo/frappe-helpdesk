@@ -75,9 +75,18 @@ AUDITOR_HIDDEN_TYPE_PREFIX = "INS - "
 TICKET_MONITOR_ROLE = "Ticket Monitor"
 MONITOR_ALLOWED_PTYPES = ("read", "select", "export", "report", "print")
 # Dimensy: the reporter hears from Customer Service only; RA Administrator also writes to the applicant of a revocation (authentication)
-REPLY_TEAM = "Customer Service"
-REPLY_EXCEPTION_TEAM = "RA Administrator"
+# team names were shortened (Customer Service -> CS, RA Administrator -> Admin RA); the old names stay accepted until every site has
+# run the project's team migration (phase2)
+REPLY_TEAMS = ("CS", "Customer Service")
+REPLY_EXCEPTION_TEAMS = ("Admin RA", "RA Administrator")
 REPLY_EXCEPTION_TYPE_PREFIX = "SRT - Pencabutan"
+# internal tickets (Channel "Internal"): raised by an agent, no reporter outside Dimensy, so nobody replies by email (comments only), and
+# Customer Service does not see them unless it is the target team, the requester or an assignee
+INTERNAL_CHANNEL = "Internal"
+
+
+def is_internal_channel(channel: str | None) -> bool:
+    return (channel or "") == INTERNAL_CHANNEL
 
 
 def is_ticket_monitor(user: str | None = None) -> bool:
@@ -101,20 +110,25 @@ def monitor_denies(ptype: str | None, user: str | None = None) -> bool:
     return bool(ptype) and ptype not in MONITOR_ALLOWED_PTYPES and is_ticket_monitor(user)
 
 
-def can_reply_to_reporter(ticket_type: str | None, user: str | None = None) -> bool:
-    """One door: only Customer Service (and RA Administrator on revocation tickets) writes to the reporter."""
+def can_reply_to_reporter(ticket_type: str | None, user: str | None = None, channel: str | None = None) -> bool:
+    """One door: only Customer Service (and RA Administrator on revocation tickets) writes to the reporter. Internal tickets have no
+    outside reporter and are worked through internal comments only."""
     user = user or frappe.session.user
     if user == "Administrator":
         return True
-    teams = [REPLY_TEAM]
+    if is_internal_channel(channel):
+        return False
+    teams = list(REPLY_TEAMS)
     if (ticket_type or "").startswith(REPLY_EXCEPTION_TYPE_PREFIX):
-        teams.append(REPLY_EXCEPTION_TEAM)
+        teams += REPLY_EXCEPTION_TEAMS
     return bool(frappe.db.exists("HD Team Member", {"parent": ["in", teams], "user": user}))
 
 # Dimensy: certificate lifecycle (SRT) and security incident (INS) tickets are handled by Trusted Roles only, so they can be
 # assigned only to members of these teams (the ticket's own team is not enough: it may have been set by mistake)
 RESTRICTED_ASSIGNMENT_TYPE_PREFIXES = ("SRT - ", "INS - ")
-RESTRICTED_ASSIGNMENT_TEAMS = ("RA Administrator", "Security", "Technical Support", "Developer")
+# Technical Support was split into ASO (Administrator Sistem Operasi) and AAP (Administrator Aplikasi PSrE); the old name stays
+# accepted until every site has run the team migration
+RESTRICTED_ASSIGNMENT_TEAMS = ("Admin RA", "Security", "ASO", "AAP", "Developer", "RA Administrator", "Technical Support")
 
 
 def is_ticket_auditor(user: str | None = None) -> bool:
