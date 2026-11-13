@@ -89,6 +89,11 @@ def is_internal_channel(channel: str | None) -> bool:
     return (channel or "") == INTERNAL_CHANNEL
 
 
+# an internal ticket of a customer-facing type (LYN: a disruption or a technical problem an agent found) concerns every Customer Service agent,
+# who answers the customers reporting the same thing; internal INS, SRT and INT tickets stay with their team
+INTERNAL_OPEN_TO_CS_TYPE_PREFIX = "LYN - "
+
+
 def is_ticket_monitor(user: str | None = None) -> bool:
     user = user or frappe.session.user
     return user != "Administrator" and TICKET_MONITOR_ROLE in frappe.get_roles(user)
