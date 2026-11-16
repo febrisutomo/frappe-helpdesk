@@ -456,7 +456,9 @@ const teamMembers = createResource({
   },
 });
 
-const { isManager, userId } = useAuthStore();
+const { isManager: hasManagerRole, userId } = useAuthStore();
+// dimensy: the read-only ticketing administrator reads every ticket, so it gets the organization dashboard too
+const isManager = hasManagerRole || Boolean(window.ticket_auditor);
 
 const viewMyStats = ref(false);
 const activeTab = useStorage("dashboard_active_tab", "organization");

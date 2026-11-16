@@ -7,7 +7,7 @@ from frappe.query_builder import DocType
 from frappe.query_builder.functions import Avg, Count, Function
 from pypika import Case
 
-from helpdesk.utils import agent_only, is_frappe_version
+from helpdesk.utils import agent_only, is_frappe_version, is_ticket_auditor
 
 HD_TICKET = "HD Ticket"
 
@@ -29,7 +29,8 @@ def get_dashboard_data(
     Get dashboard data based on the type and date range.
     """
     user = frappe.session.user
-    is_manager = "Agent Manager" in frappe.get_roles(user)
+    # dimensy: the ticketing administrator reads every ticket (P51), so it gets the organization dashboard too
+    is_manager = "Agent Manager" in frappe.get_roles(user) or is_ticket_auditor(user)
 
     if not is_manager and (filters.get("agent") != user or filters.get("team")):
         frappe.throw(
@@ -443,7 +444,8 @@ def get_master_dashboard_data(
     if team:
         filters["agent_group"] = team
     if agent:
-        filters["_assign"] = ["like", f"%{agent}%"]
+        # dimensy: match the quoted address in the JSON list, else admin@x also matches sysadmin@x
+        filters["_assign"] = ["like", f'%"{agent}"%']
     team_data = get_team_chart_data(from_date, to_date, filters)
     ticket_type_data = get_ticket_type_chart_data(from_date, to_date, filters)
     ticket_priority_data = get_ticket_priority_chart_data(from_date, to_date, filters)
@@ -571,16 +573,18 @@ def get_ticket_channel_chart_data(
     """
     Get ticket channel chart data for the dashboard.
     """
+    # dimensy: count by the Channel field (Portal, Email, WhatsApp, Phone, Internal, Lainnya); via_customer_portal only
+    # tells portal from email, and is also set on internal and answered-on-the-spot tickets to keep mail away from the reporter
     result = frappe.get_all(
         HD_TICKET,
-        fields=["via_customer_portal as channel ", COUNT_NAME],
+        fields=["custom_channel as channel", COUNT_NAME],
         filters=filters,
-        group_by="via_customer_portal",
-        order_by="via_customer_portal desc",
+        group_by="custom_channel",
+        order_by=COUNT_DESC,
     )
 
     for row in result:
-        row.channel = "Portal" if row.channel == 1 else "Email"
+        row.channel = row.channel or _("No Channel")
 
     return get_pie_chart_config(
         result,
