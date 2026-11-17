@@ -80,3 +80,30 @@ class TestInvitationTitleOverride(FrappeTestCase):
             invitation._get_email_title(),
             frappe.get_hooks("app_title", app_name="frappe")[0],
         )
+
+
+class TestInvitationTemplate(FrappeTestCase):
+    # dimensy: agents and customers get their own invitation Email Template when the site has one
+    def tearDown(self) -> None:
+        frappe.db.rollback()
+
+    def _invitation(self, role: str, app_name: str = "helpdesk") -> HelpdeskUserInvitation:
+        invitation = frappe.new_doc("User Invitation")
+        invitation.app_name = app_name
+        invitation.append("roles", {"role": role})
+        return invitation
+
+    def _template(self, name: str) -> None:
+        frappe.get_doc(doctype="Email Template", name=name, subject=name, response=name).insert(ignore_if_duplicate=True)
+
+    def test_template_per_audience(self):
+        self._template("Undangan Petugas")
+        self._template("Undangan Pelanggan")
+        self.assertEqual(self._invitation("Agent")._invitation_template(), "Undangan Petugas")
+        self.assertEqual(self._invitation("HD Customer")._invitation_template(), "Undangan Pelanggan")
+        self.assertIsNone(self._invitation("Agent", app_name="frappe")._invitation_template())
+
+    def test_without_template_frappe_email_is_kept(self):
+        for name in ("Undangan Petugas", "Undangan Pelanggan"):
+            frappe.db.delete("Email Template", name)
+        self.assertIsNone(self._invitation("Agent")._invitation_template())
