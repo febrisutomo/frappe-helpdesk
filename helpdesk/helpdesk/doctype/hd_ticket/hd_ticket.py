@@ -246,7 +246,7 @@ class HDTicket(Document):
         try:
             frappe.sendmail(
                 recipients=[self.raised_by],
-                subject=f"Re: {self.subject}",
+                subject=f"Re: {self.subject} - #{self.name}",  # dimensy: subject, then the ticket number (P66)
                 message=self._get_rendered_template(
                     feedback_email_content,
                     default_feedback_email_content,
@@ -823,7 +823,7 @@ class HDTicket(Document):
         frappe.has_permission("HD Ticket", "write", doc=self, throw=True)  # dimensy: see new_comment
         skip_email_workflow = self.skip_email_workflow()
         medium = "" if skip_email_workflow else "Email"
-        subject = f"Re: {self.subject}"
+        subject = f"Re: {self.subject} - #{self.name}"  # dimensy: subject, then the ticket number (P66)
         from_email_id = from_email.get("email_id") if from_email else None
         email_account_name = from_email.get("email_account") if from_email else None
         sender = from_email_id or frappe.session.user
@@ -1058,7 +1058,7 @@ class HDTicket(Document):
         try:
             frappe.sendmail(
                 recipients=[self.raised_by],
-                subject=_("Ticket #{0}: We've received your request").format(self.name),
+                subject=f"{self.subject} - #{self.name}",  # dimensy: subject, then the ticket number (P66)
                 message=self._get_rendered_template(
                     acknowledgement_email_content,
                     default_acknowledgement_email_content,
